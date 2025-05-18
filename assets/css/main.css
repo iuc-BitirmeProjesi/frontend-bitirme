@@ -21,3 +21,23 @@
   opacity: 0;
   transform: translateY(20px);
 }
+
+@theme static{
+  --color-primary: #0B2139; /*bunlar bg-primary, text-primary, fill-primary gibi classlar oluşturuyor */
+  --color-secondary: #FAA23E; /*aynı zamanda color typeına uygun isim verdiysek color="secondary" de çalışıyor */
+  --color-info: #36827F;
+  --color-success: #36827F;
+  --color-custom: #C5CBD3;
+  /* neutral rengini primary'e göre otomatik ayarlıyor custom oluşturmana gerek yok*/
+
+}
+
+
+
+/* .primary{
+  color:#0B2139; 
+}
+
+.secondary {
+  color:#FAA23E; 
+} */

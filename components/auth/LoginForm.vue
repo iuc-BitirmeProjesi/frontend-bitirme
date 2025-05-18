@@ -1,55 +1,32 @@
 // components/Auth/LoginForm.vue
 <template>
-  <form @submit.prevent="handleLogin" class="space-y-6 px-6">
+  <form @submit.prevent="handleLogin" class="space-y-6 px-6 ">
     <!-- Email Input -->
     <div class="space-y-2">
-      <label for="email" class="block text-sm font-medium text-gray-700">Email</label>      <UInput 
-        id="email"
-        v-model="formData.email"
-        placeholder="you@example.com" 
-        icon="i-heroicons-envelope"
-        class="w-full"
-        :error="errors.email"
-        style="background: #242424; color: #f7f7f7; border: 1px solid #ffffff14; padding: 13px 38px"
-      />
+      <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+      <UInput id="email" v-model="formData.email" placeholder="you@example.com" icon="i-heroicons-envelope"
+        class="w-full" :error="errors.email" />
     </div>
 
     <!-- Password Input -->
     <div class="space-y-2">
-      <label for="password" class="block text-sm font-medium text-gray-700">Password</label>      <UInput 
-        id="password"
-        v-model="formData.password"
-        type="password" 
-        placeholder="••••••••" 
-        icon="i-heroicons-lock-closed"
-        class="w-full"
-        :error="errors.password"
-        style="background: #242424; color: #f7f7f7; border: 1px solid #ffffff14; padding: 13px 38px"
-      />
+      <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+      <UInput id="password" v-model="formData.password" type="password" placeholder="••••••••"
+        icon="i-heroicons-lock-closed" class="w-full" :error="errors.password" />
     </div>
 
     <!-- Remember Me and Forgot Password -->
-    <div class="flex items-center justify-between">      <UCheckbox v-model="formData.remember" label="Remember me" />
-      <NuxtLink to="/forgot-password" class="text-sm" style="color: #FAA33D">
+    <div class="flex items-center justify-between">
+      <UCheckbox v-model="formData.remember" label="Remember me" />
+      <NuxtLink to="/forgot-password" class="text-sm text-secondary hover:text-secondary/90">
         Forgot password?
       </NuxtLink>
     </div>
 
     <!-- Error Alert -->
-    <UAlert
-      v-if="error"
-      color="error"
-      variant="soft"
-      icon="i-heroicons-exclamation-triangle"
-      :title="error"
-      class="mt-4"
-    />    <!-- Login Button -->
-    <UButton 
-      type="submit" 
-      block 
-      :loading="isLoading"
-      style="background-color: #0F172B; color: #fff; padding: 13px;border:1px solid #ffffff14; border-radius: 8px; ;"
-    >
+    <UAlert v-if="error" color="error" variant="soft" icon="i-heroicons-exclamation-triangle" :title="error"
+      class="mt-4" /> <!-- Login Button -->
+    <UButton type="submit" block :loading="isLoading" color="secondary" class="cursor-pointer">
       {{ isLoading ? 'Logging in...' : 'Login' }}
     </UButton>
   </form>
@@ -108,7 +85,7 @@ const handleLogin = async () => {
   if (!result.success) {
     error.value = 'Invalid email or password'
   }
-  
+
   isLoading.value = false
 }
 </script>
