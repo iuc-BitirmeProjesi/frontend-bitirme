@@ -5,7 +5,7 @@
       <template #header>
         <div class="text-center">
           <img src="@/assets/images/success-redesign-Photoroom.png" alt="Success" class="mx-auto w-32 h-auto mb-3" />
-          <h1 class="text-2xl font-bold text-white">Welcome Back</h1>
+          <h1 class="text-2xl font-bold dark:text-white text-black">Welcome Back</h1>
           <p class="mt-1 text-sm font-semibold text-secondary">Sign in to your account</p>
         </div>
       </template>

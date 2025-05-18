@@ -6,12 +6,22 @@ interface RoleState {
   admin: boolean
   editOrganization: boolean
   deleteOrganization: boolean
+  editMembers: boolean
+  editRoles: boolean
+  editProjects: boolean
+  createProjects: boolean
+  deleteProjects: boolean
 }
 
 const state = reactive<RoleState>({
   admin: false,
   editOrganization: false,
-  deleteOrganization: false
+  deleteOrganization: false,
+  editMembers: false,
+  editRoles: false,
+  editProjects: false,
+  createProjects: false,
+  deleteProjects: false,
 })
 
 // Watch for any changes in the state object
@@ -68,5 +78,76 @@ const updateRole = (role: keyof RoleState, value: boolean) => {
         />
       </Switch>
     </UFormField>
+
+    <UFormField label="Edit Members" name="editMembers" size="xl">
+      <Switch
+        v-model="state.editMembers"
+        class="group relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+        :class="[state.editMembers ? 'bg-green-500' : 'bg-gray-300']"
+      >
+        <span class="sr-only">Enable edit members role</span>
+        <span
+          class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ease-in-out"
+          :class="[state.editMembers ? 'translate-x-6' : 'translate-x-1']"
+        />
+      </Switch>
+    </UFormField>
+
+    <UFormField label="Edit Roles" name="editRoles" size="xl">
+      <Switch
+        v-model="state.editRoles"
+        class="group relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+        :class="[state.editRoles ? 'bg-green-500' : 'bg-gray-300']"
+      >
+        <span class="sr-only">Enable edit members role</span>
+        <span
+          class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ease-in-out"
+          :class="[state.editRoles ? 'translate-x-6' : 'translate-x-1']"
+        />
+      </Switch>
+    </UFormField>
+
+    <UFormField label="Edit Projects" name="editProjects" size="xl">
+      <Switch
+        v-model="state.editProjects"
+        class="group relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+        :class="[state.editProjects ? 'bg-green-500' : 'bg-gray-300']"
+      >
+        <span class="sr-only">Enable edit members role</span>
+        <span
+          class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ease-in-out"
+          :class="[state.editProjects ? 'translate-x-6' : 'translate-x-1']"
+        />
+      </Switch>
+    </UFormField>
+
+    <UFormField label="Create Projects" name="createProjects" size="xl">
+      <Switch
+        v-model="state.createProjects"
+        class="group relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+        :class="[state.createProjects ? 'bg-green-500' : 'bg-gray-300']"
+      >
+        <span class="sr-only">Enable edit members role</span>
+        <span
+          class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ease-in-out"
+          :class="[state.createProjects ? 'translate-x-6' : 'translate-x-1']"
+        />
+      </Switch>
+    </UFormField>
+
+    <UFormField label="Delete Projects" name="deleteProjects" size="xl">
+      <Switch
+        v-model="state.deleteProjects"
+        class="group relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+        :class="[state.deleteProjects ? 'bg-green-500' : 'bg-gray-300']"
+      >
+        <span class="sr-only">Enable edit members role</span>
+        <span
+          class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ease-in-out"
+          :class="[state.deleteProjects ? 'translate-x-6' : 'translate-x-1']"
+        />
+      </Switch>
+    </UFormField>
+
   </UForm>
 </template>
