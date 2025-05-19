@@ -160,10 +160,9 @@ watch(() => userState.finds, (newValue) => {
             <UInput v-model="userState.finds" placeholder="Search User" required class="w-full" />
           </UFormField>
 
-          <UTable :data="foundUsers" class="flex-1"></UTable>
+          <UTable v-if="foundUsers.length > 0" :data="foundUsers" />
           <UButton label="Save Changes" type="submit" color="secondary" class="self-end cursor-pointer" />
         </UForm>
-
       </template>
 
     </UTabs>
