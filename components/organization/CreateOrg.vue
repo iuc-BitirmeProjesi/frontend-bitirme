@@ -24,7 +24,7 @@ const items = [
 ] satisfies TabsItem[]
 
 const organizationState = reactive({
-  name: ' ',
+  name:'',
   description: '',
   logo: '',
 })
@@ -35,9 +35,31 @@ const roleState = reactive({ //organizationId bir önceki oluşturulan orgId'den
   permissionFlags: [],
 })
 
+const orgId = ref('')
+
 const userState = reactive({
   finds: ''
 })
+
+const createOrganization = async () => {
+  const token = useCookie('auth_token')
+  if (!token.value) {
+    console.warn('No auth token found')
+  }
+
+  const result = await useFetch('http://localhost:8787/api/organizations', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token.value}`
+    },
+    body: organizationState
+  })
+
+  //@ts-ignore
+  orgId.value = result.data.value.data.id;
+
+}
 </script>
 
 <template>
@@ -63,7 +85,7 @@ const userState = reactive({
             <UInput v-model="organizationState.logo" class="w-full" />
           </UFormField>
 
-          <UButton label="Continue" type="submit" color="secondary" class="self-end cursor-pointer" />
+          <UButton label="Create and Continue" @click="createOrganization" type="submit" color="secondary" class="self-end cursor-pointer" />
         </UForm>
       </template>
 
@@ -73,10 +95,10 @@ const userState = reactive({
         </p>
 
         <!--create roles-->
-        <OrganizationRolesTable />
+        <OrganizationRolesTable :orgId="orgId"/> <!-- orgId yi prop attık-->
         <UForm :state="roleState" class="flex flex-col gap-4">
           <UModal>
-            <UButton label="Create Role" color="secondary"></UButton>
+            <UButton label="Create a New Role" color="secondary" class="cursor-pointer"></UButton>
               <template #content>
                 <div class="p-4">
                   <OrganizationCreateRoles :roleState="roleState" />

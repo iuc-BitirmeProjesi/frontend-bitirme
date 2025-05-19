@@ -4,18 +4,32 @@ if (!token.value) {
     console.warn('No auth token found')
 }
 
+const props = defineProps<{
+    orgId : string;
+}>();
+
+const rolesData = ref([]);
+
 const result = await useFetch('http://localhost:8787/api/organizationRoles/all', {
     method: 'GET',
     headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token.value}`,
-        "orgId":'null'  
+        "orgId":`${props.orgId}`  
     }
 });
-const final = result.data.value;
-console.log(final);
-    
-// const data = ref({
 
-// })
+// @ts-ignore
+rolesData.value = result.data.value.data;
+
+
+
 </script>
+
+<template>
+    <UTable :data="rolesData" class="w-full">
+        <UTableColumn field="name" label="Role Name" />
+        <UTableColumn field="description" label="Description" />
+        <UTableColumn field="permissionFlags" label="Permission Flags" />
+    </UTable>
+</template>
