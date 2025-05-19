@@ -33,6 +33,11 @@ const updateRole = (role: keyof RoleState, value: boolean) => {
   state[role] = value
   alert(`Role ${role} changed to: ${value}`) // Adding an alert to make it more visible
 }
+
+const emit = defineEmits(['update:state'])
+
+
+
 </script>
 
 <template>
@@ -148,6 +153,8 @@ const updateRole = (role: keyof RoleState, value: boolean) => {
         />
       </Switch>
     </UFormField>
+
+    <UButton label="Save Flags" class="self-end" color="secondary" @click="emit('update:state', state)" />
 
   </UForm>
 </template>

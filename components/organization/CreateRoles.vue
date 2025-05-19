@@ -1,19 +1,20 @@
 <script setup lang="ts">
-interface RoleState {
-    name: string;
-    description: string;
-    permissionFlags: string[]; // Using string[] as it's more specific than any[]
-}
 
 const props = defineProps<{
-    roleState: RoleState;
+    orgId : string;
 }>();
 
 const roleState = reactive({ //organizationId bir önceki oluşturulan orgId'den gelecek
   name: '',
   description: '',
-  permissionFlags: [],
+  permissionFlags: {},
+  organizationId:props.orgId
 })
+
+//this part needs rework
+const handleRoleState = (state: Record<string, boolean>) => {
+  roleState.permissionFlags = state as any // backend'e direkt JSON objesi gönderilecek
+}
 
 const createRole = async () => {
   const token = useCookie('auth_token')
@@ -45,7 +46,7 @@ const createRole = async () => {
                 <UButton label="Edit Flags" color="success" class="cursor-pointer"></UButton>
                 <template #content>
                     <div class="p-4">
-                        <OrganizationManageRoles />
+                        <OrganizationManageRoles @update:state="handleRoleState"/>
                     </div>
                 </template>
             </UModal>

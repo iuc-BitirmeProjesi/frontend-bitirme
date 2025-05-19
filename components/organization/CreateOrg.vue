@@ -29,11 +29,7 @@ const organizationState = reactive({
   logo: '',
 })
 
-const roleState = reactive({ //organizationId bir önceki oluşturulan orgId'den gelecek
-  name: '',
-  description: '',
-  permissionFlags: [],
-})
+
 
 const orgId = ref('')
 
@@ -96,19 +92,19 @@ const createOrganization = async () => {
 
         <!--create roles-->
         <OrganizationRolesTable :orgId="orgId"/> <!-- orgId yi prop attık-->
-        <UForm :state="roleState" class="flex flex-col gap-4">
+        <div class="flex flex-col gap-4">
           <UModal>
             <UButton label="Create a New Role" color="secondary" class="cursor-pointer"></UButton>
               <template #content>
                 <div class="p-4">
-                  <OrganizationCreateRoles :roleState="roleState" />
+                  <OrganizationCreateRoles  :orgId="orgId"/>
                 </div>
               </template>
             
           </UModal>
 
           <UButton label="Continue" type="submit" color="secondary" class="self-end cursor-pointer" />
-        </UForm>
+        </div>
       </template>
 
       <!--add users-->
