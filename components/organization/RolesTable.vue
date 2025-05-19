@@ -22,14 +22,8 @@ const result = await useFetch('http://localhost:8787/api/organizationRoles/all',
 // @ts-ignore
 rolesData.value = result.data.value.data;
 
-
-
 </script>
 
 <template>
-    <UTable :data="rolesData" class="w-full">
-        <UTableColumn field="name" label="Role Name" />
-        <UTableColumn field="description" label="Description" />
-        <UTableColumn field="permissionFlags" label="Permission Flags" />
-    </UTable>
+    <UTable :data="rolesData" class="w-full"></UTable>
 </template>

@@ -24,18 +24,17 @@ const items = [
 ] satisfies TabsItem[]
 
 const organizationState = reactive({
-  name:'',
+  name: '',
   description: '',
   logo: '',
 })
-
-
 
 const orgId = ref('')
 
 const userState = reactive({
   finds: ''
 })
+
 
 const createOrganization = async () => {
   const token = useCookie('auth_token')
@@ -54,8 +53,51 @@ const createOrganization = async () => {
 
   //@ts-ignore
   orgId.value = result.data.value.data.id;
-
 }
+
+
+let debounceTimeout: ReturnType<typeof setTimeout>
+const foundUsers = ref([]);
+function debouncedSearch(query: string) {
+  clearTimeout(debounceTimeout)
+
+  const token = useCookie('auth_token')
+  if (!token.value) {
+    console.warn('No auth token found')
+  }
+
+  debounceTimeout = setTimeout(() => {
+    if (!query) return
+
+    $fetch('http://localhost:8787/api/users/search', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token.value}`,
+        word: query
+      }
+    })
+      .then((res) => {
+        console.log('Fetched users:', res)
+        //@ts-ignore
+        console.log(res.data)
+        //@ts-ignore
+        foundUsers.value = res.data
+      })
+
+      .catch((err) => {
+        console.error('Search error:', err)
+      })
+  }, 300) // 300ms debounce
+}
+
+// Watch the input field
+watch(() => userState.finds, (newValue) => {
+  debouncedSearch(newValue)
+})
+
+
+
+
 </script>
 
 <template>
@@ -81,7 +123,8 @@ const createOrganization = async () => {
             <UInput v-model="organizationState.logo" class="w-full" />
           </UFormField>
 
-          <UButton label="Create and Continue" @click="createOrganization" type="submit" color="secondary" class="self-end cursor-pointer" />
+          <UButton label="Create and Continue" @click="createOrganization" type="submit" color="secondary"
+            class="self-end cursor-pointer" />
         </UForm>
       </template>
 
@@ -91,16 +134,16 @@ const createOrganization = async () => {
         </p>
 
         <!--create roles-->
-        <OrganizationRolesTable :orgId="orgId"/> <!-- orgId yi prop attık-->
+        <OrganizationRolesTable :orgId="orgId" /> <!-- orgId yi prop attık-->
         <div class="flex flex-col gap-4">
           <UModal>
             <UButton label="Create a New Role" color="secondary" class="cursor-pointer"></UButton>
-              <template #content>
-                <div class="p-4">
-                  <OrganizationCreateRoles  :orgId="orgId"/>
-                </div>
-              </template>
-            
+            <template #content>
+              <div class="p-4">
+                <OrganizationCreateRoles :orgId="orgId" />
+              </div>
+            </template>
+
           </UModal>
 
           <UButton label="Continue" type="submit" color="secondary" class="self-end cursor-pointer" />
@@ -117,8 +160,10 @@ const createOrganization = async () => {
             <UInput v-model="userState.finds" placeholder="Search User" required class="w-full" />
           </UFormField>
 
+          <UTable :data="foundUsers" class="flex-1"></UTable>
           <UButton label="Save Changes" type="submit" color="secondary" class="self-end cursor-pointer" />
         </UForm>
+
       </template>
 
     </UTabs>
