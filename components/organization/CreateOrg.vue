@@ -31,17 +31,6 @@ const organizationState = reactive({
 
 const orgId = ref('')
 
-const userState = reactive({
-  finds: ''
-})
-
-const columns = [{
-  accessorKey: 'id',
-  header: 'Id'
-}, {
-  accessorKey: 'email',
-  header: 'email'
-}];
 
 const createOrganization = async () => {
   const token = useCookie('auth_token')
@@ -62,45 +51,6 @@ const createOrganization = async () => {
   orgId.value = result.data.value.data.id;
 }
 
-
-let debounceTimeout: ReturnType<typeof setTimeout>
-const foundUsers = ref([]);
-function debouncedSearch(query: string) {
-  clearTimeout(debounceTimeout)
-
-  const token = useCookie('auth_token')
-  if (!token.value) {
-    console.warn('No auth token found')
-  }
-
-  debounceTimeout = setTimeout(() => {
-    if (!query) return
-
-    $fetch('http://localhost:8787/api/users/search', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token.value}`,
-        word: query
-      }
-    })
-      .then((res) => {
-        console.log('Fetched users:', res)
-        //@ts-ignore
-        console.log(res.data)
-        //@ts-ignore
-        foundUsers.value = res.data
-      })
-
-      .catch((err) => {
-        console.error('Search error:', err)
-      })
-  }, 300) // 300ms debounce
-}
-
-// Watch the input field
-watch(() => userState.finds, (newValue) => {
-  debouncedSearch(newValue)
-})
 
 
 
@@ -157,19 +107,12 @@ watch(() => userState.finds, (newValue) => {
         </div>
       </template>
 
-      <!--add users-->
+      <!--search and add users-->
       <template #users="{ item }">
         <p class="text-gray-600 dark:text-gray-400 mb-4">
           {{ item.description }}
         </p>
-        <UForm :state="userState" class="flex flex-col gap-4">
-          <UFormField label="Add Users to Your Organization" name="current" required>
-            <UInput v-model="userState.finds" placeholder="Search User" required class="w-full" />
-          </UFormField>
-
-          <UTable v-if="foundUsers.length > 0" :data="foundUsers" :columns="columns" />
-          <UButton label="Save Changes" type="submit" color="secondary" class="self-end cursor-pointer" />
-        </UForm>
+        <OrganizationSearchUsers :orgId="orgId"/>
       </template>
 
     </UTabs>
