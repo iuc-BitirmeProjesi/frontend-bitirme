@@ -13,7 +13,7 @@ const roleState = reactive({ //organizationId bir önceki oluşturulan orgId'den
 
 //this part needs rework
 const handleRoleState = (state: Record<string, boolean>) => {
-  roleState.permissionFlags = state as any // backend'e direkt JSON objesi gönderilecek
+  roleState.permissionFlags = state // backend'e direkt JSON objesi gönderilecek
 }
 
 const createRole = async () => {

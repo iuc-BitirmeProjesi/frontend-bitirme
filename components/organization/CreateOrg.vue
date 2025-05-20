@@ -35,6 +35,13 @@ const userState = reactive({
   finds: ''
 })
 
+const columns = [{
+  accessorKey: 'id',
+  header: 'Id'
+}, {
+  accessorKey: 'email',
+  header: 'email'
+}];
 
 const createOrganization = async () => {
   const token = useCookie('auth_token')
@@ -160,7 +167,7 @@ watch(() => userState.finds, (newValue) => {
             <UInput v-model="userState.finds" placeholder="Search User" required class="w-full" />
           </UFormField>
 
-          <UTable v-if="foundUsers.length > 0" :data="foundUsers" />
+          <UTable v-if="foundUsers.length > 0" :data="foundUsers" :columns="columns" />
           <UButton label="Save Changes" type="submit" color="secondary" class="self-end cursor-pointer" />
         </UForm>
       </template>
