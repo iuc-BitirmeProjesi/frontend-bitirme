@@ -7,9 +7,6 @@ if (!token.value) {
 import { h, resolveComponent } from 'vue'
 import type { TableColumn, TableRow } from '@nuxt/ui'
 
-
-
-const UBadge = resolveComponent('UBadge')
 const UCheckbox = resolveComponent('UCheckbox')
 
 
@@ -57,7 +54,6 @@ const selectOptions = computed(() =>
 )
 
 const columns = ref<TableColumn<User>[]>([])
-const items = ref(['Backlog', 'Todo', 'In Progress', 'Done'])
 function generateColumns(): TableColumn<User>[] {
     return [
         {
@@ -181,8 +177,7 @@ watch(() => userState.finds, (newValue) => {
 </script>
 
 
-<template>
-    <UForm :state="userState" class="flex flex-col gap-4">
+<template>    <UForm :state="userState" class="flex flex-col gap-4">
         <UFormField label="Add Users to Your Organization" name="current" required>
             <UInput v-model="userState.finds" placeholder="Search User" required class="w-full" />
         </UFormField>
@@ -204,5 +199,4 @@ watch(() => userState.finds, (newValue) => {
         </UTable>
         <UButton label="Save Changes" type="submit" color="secondary" class="self-end cursor-pointer" />
     </UForm>
-
 </template>
