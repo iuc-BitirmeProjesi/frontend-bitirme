@@ -18,6 +18,35 @@ const props = defineProps<{
     orgId: string;
 }>();
 
+// Loading state for roles
+const rolesLoading = ref(false)
+
+// Function to fetch roles when needed
+const fetchRoles = async () => {
+    if (roles.value.length > 0 || rolesLoading.value) return
+    
+    rolesLoading.value = true
+    try {
+        const res = await useFetch('http://localhost:8787/api/organizationRoles/all', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token.value}`,
+                "orgId": `${props.orgId}`
+            }
+        })
+        //@ts-ignore
+        roles.value = res.data.value.data.map((r) => ({
+            id: r.id,
+            name: r.name
+        }))
+    } catch (error) {
+        console.error('Error fetching roles:', error)
+    } finally {
+        rolesLoading.value = false
+    }
+}
+
 const selectOptions = computed(() =>
     roles.value.map(role => ({
         //@ts-ignore
@@ -28,7 +57,7 @@ const selectOptions = computed(() =>
 )
 
 const columns = ref<TableColumn<User>[]>([])
-
+const items = ref(['Backlog', 'Todo', 'In Progress', 'Done'])
 function generateColumns(): TableColumn<User>[] {
     return [
         {
@@ -62,41 +91,18 @@ function generateColumns(): TableColumn<User>[] {
         },
         {
             id: 'role',
-            header: 'Role',
-            cell: ({ row }) =>
-                h(resolveComponent('USelect'), {
-                    modelValue: selectedRoles[row.original.id] ?? null,
-                    'onUpdate:modelValue': (value: number) => {
-                        selectedRoles[row.original.id] = value
-                    },
-                    options: selectOptions.value,
-                    placeholder: 'Select Role',
-                    class: 'min-w-[150px]',
-                    key: `role-select-${row.original?.id || row.id}-${selectOptions.value.length}`
-                })
+            header: 'Role'
         }
     ]
 }
 
+//Initialize columns
+onMounted(() => {
+    columns.value = generateColumns()
+})
 
 //get the roles
 const roles = ref([]) //its an array of role objects right now
-onMounted(async () => {
-    const res = await useFetch('http://localhost:8787/api/organizationRoles/all', {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token.value}`,
-            "orgId": `${props.orgId}`
-        }
-    })
-    //@ts-ignore
-    roles.value = res.data.value.data.map((r) => ({
-        id: r.id,
-        name: r.name
-    }))
-    columns.value = generateColumns()
-})
 
 //rol atama
 const selectedRoles = reactive<Record<number, number | null>>({}) // sadece ID
@@ -182,9 +188,21 @@ watch(() => userState.finds, (newValue) => {
         </UFormField>
 
         <UTable v-if="foundUsers.length > 0" :data="foundUsers" :columns="columns" ref="table"
-            v-model:row-selection="rowSelection" @select="onSelect"  :key="`table-key-${columns.length}-${selectOptions.length}`"/>
+            v-model:row-selection="rowSelection" @select="onSelect" :key="`table-key-${columns.length}-${selectOptions.length}`">
+            <!-- Role select slot -->
+            <template #role-cell="{ row }">
+                <USelect 
+                    :model-value="selectedRoles[row.original.id] ?? null"
+                    @update:model-value="(value) => selectedRoles[row.original.id] = value"
+                    :items="selectOptions"
+                    placeholder="Select Role"
+                    class="min-w-[150px]"
+                    :loading="rolesLoading"
+                    @focus="fetchRoles"
+                />
+            </template>
+        </UTable>
         <UButton label="Save Changes" type="submit" color="secondary" class="self-end cursor-pointer" />
     </UForm>
-    <h1>{{ roles }}</h1>
-    <h1>{{ selectOptions }}</h1>
+
 </template>
