@@ -8,6 +8,7 @@
 
 // ----- Imports -----
 import PermissionFlagsModal from './PermissionFlagsModal.vue';
+import { watch } from 'vue';
 
 // ----- Types -----
 interface Role {
@@ -21,6 +22,7 @@ interface Role {
 // ----- Props -----
 const props = defineProps<{
     orgId: string; // Organization ID for fetching roles
+    refreshKey?: number;
 }>();
 
 // ----- State -----
@@ -65,6 +67,11 @@ const closeModal = () => {
     isModalOpen.value = false;
     selectedRole.value = null;
 }
+
+// ----- Watchers -----
+watch(() => props.refreshKey, () => {
+    fetchRoles();
+});
 
 // ----- Lifecycle -----
 // Load roles data when component is mounted

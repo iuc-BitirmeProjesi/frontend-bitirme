@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref, computed } from 'vue'
+import { reactive, ref, computed, defineEmits } from 'vue'
 
 const props = defineProps<{
     orgId: string;
@@ -31,6 +31,8 @@ const permissionFlags = ref<PermissionFlags>({
 
 // Track if the flags have been modified to show indicators
 const flagsModified = ref(false);
+
+const emit = defineEmits(['role-created'])
 
 const roleState = reactive({ 
   name: '',
@@ -74,7 +76,7 @@ const createRole = async () => {
     });
     
     console.log('Role created:', result);
-    // You might want to add feedback to the user here
+    emit('role-created'); // Notify parent
   } catch (error) {
     console.error('Failed to create role:', error);
     // Handle error appropriately
