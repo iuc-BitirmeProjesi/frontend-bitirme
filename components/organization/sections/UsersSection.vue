@@ -6,10 +6,34 @@
         <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Users</h2>
         <p class="text-gray-600 dark:text-gray-400 mt-1">Manage organization members and their access</p>
       </div>
-      <UButton color="primary" icon="i-heroicons-plus" @click="inviteUser">
+      <UButton color="primary" icon="i-heroicons-plus" @click="toggleInviteModal">
         Invite User
       </UButton>
-    </div>
+    </div>    <!-- Invite User Modal -->
+    <UModal v-model="showInviteModal">
+      <UCard>
+        <div class="p-6">
+          <div class="flex items-center justify-between mb-6">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+              Invite Users to Organization
+            </h3>
+            <UButton 
+              color="secondary" 
+              variant="ghost" 
+              icon="i-heroicons-x-mark-20-solid" 
+              class="-my-1" 
+              @click="showInviteModal = false" 
+            />
+          </div>
+          
+          <OrganizationSearchUsers 
+            :org-id="String(organizationId)" 
+            @users-added="handleUsersAdded"
+            ref="searchUsersRef"
+          />
+        </div>
+      </UCard>
+    </UModal>
 
     <!-- Search and Filters -->
     <div class="flex flex-col sm:flex-row gap-4">
@@ -18,25 +42,21 @@
           v-model="searchQuery"
           icon="i-heroicons-magnifying-glass"
           placeholder="Search users..."
-          @input="handleSearch"
         />
       </div>
       <USelect
         v-model="selectedRole"
         :options="roleOptions"
         placeholder="Filter by role"
-        @change="handleRoleFilter"
       />
-    </div>    <!-- Users Loading -->
+    </div><!-- Users Loading -->
     <div v-if="loading" class="flex flex-col justify-center items-center py-12 space-y-3">
       <USpinner size="lg" />
       <p class="text-gray-600 dark:text-gray-300 font-medium">Loading users...</p>
-    </div>
-
-    <!-- Error State -->
+    </div>    <!-- Error State -->
     <UAlert
       v-else-if="error"
-      color="red"
+      color="error"
       variant="subtle"
       :title="error"
       icon="i-heroicons-exclamation-triangle"
@@ -51,12 +71,11 @@
         <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-3">No Users Yet</h3>
         <p class="text-gray-600 dark:text-gray-300 mb-6">
           Start building your team by inviting members to this organization.
-        </p>
-        <UButton 
+        </p>        <UButton 
           color="primary" 
           size="lg"
           icon="i-heroicons-plus"
-          @click="inviteUser"
+          @click="toggleInviteModal"
         >
           Invite Your First User
         </UButton>
@@ -72,64 +91,61 @@
           Try adjusting your search terms or filters.
         </p>
       </div>
-    </div>
-
-    <!-- Users Table -->
+    </div>    <!-- Users List -->
     <div v-else class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-      <UTable 
-        :rows="filteredUsers" 
-        :columns="columns"
-        :loading="loading"
-        class="w-full"
-      >
-        <template #avatar-data="{ row }">
-          <div class="flex items-center space-x-3">
-            <UAvatar
-              :src="row.avatar"
-              :alt="row.name"
-              size="sm"
-            />
-            <div>
-              <div class="font-medium text-gray-900 dark:text-white">{{ row.name }}</div>
-              <div class="text-sm text-gray-500 dark:text-gray-400">{{ row.email }}</div>
+      <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Organization Members</h3>
+      </div>
+      
+      <div class="divide-y divide-gray-200 dark:divide-gray-700">
+        <div 
+          v-for="user in filteredUsers" 
+          :key="user.id"
+          class="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        >
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+              <UAvatar
+                :src="user.avatar"
+                :alt="user.name"
+                size="md"
+              />
+              <div>
+                <div class="font-medium text-gray-900 dark:text-white">{{ user.name }}</div>
+                <div class="text-sm text-gray-500 dark:text-gray-400">{{ user.email }}</div>
+              </div>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+              <UBadge 
+                :color="getRoleColor(user.role)" 
+                variant="subtle"
+              >
+                {{ user.role }}
+              </UBadge>
+              
+              <UBadge 
+                :color="getStatusColor(user.status)" 
+                variant="subtle"
+              >
+                {{ user.status }}
+              </UBadge>
+              
+              <span class="text-sm text-gray-600 dark:text-gray-400">
+                {{ formatLastActive(user.lastActive) }}
+              </span>
+              
+              <UDropdown :items="getUserActions(user)">
+                <UButton 
+                  color="secondary" 
+                  variant="ghost" 
+                  icon="i-heroicons-ellipsis-horizontal"
+                />
+              </UDropdown>
             </div>
           </div>
-        </template>
-
-        <template #role-data="{ row }">
-          <UBadge 
-            :color="getRoleColor(row.role)" 
-            variant="subtle"
-          >
-            {{ row.role }}
-          </UBadge>
-        </template>
-
-        <template #status-data="{ row }">
-          <UBadge 
-            :color="row.status === 'active' ? 'success' : 'warning'" 
-            variant="subtle"
-          >
-            {{ row.status }}
-          </UBadge>
-        </template>
-
-        <template #lastActive-data="{ row }">
-          <span class="text-sm text-gray-600 dark:text-gray-400">
-            {{ formatLastActive(row.lastActive) }}
-          </span>
-        </template>
-
-        <template #actions-data="{ row }">
-          <UDropdown :items="getUserActions(row)">
-            <UButton 
-              color="gray" 
-              variant="ghost" 
-              icon="i-heroicons-ellipsis-horizontal"
-            />
-          </UDropdown>
-        </template>
-      </UTable>
+        </div>
+      </div>
     </div>
 
     <!-- Users Stats -->
@@ -189,18 +205,13 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 const searchQuery = ref('')
 const selectedRole = ref<string | null>(null)
+const showInviteModal = ref(false)
+
+// Refs
+const searchUsersRef = ref()
 
 // Token for API requests
 const token = useCookie('auth_token')
-
-// Table columns
-const columns = [
-  { key: 'avatar', label: 'User' },
-  { key: 'role', label: 'Role' },
-  { key: 'status', label: 'Status' },
-  { key: 'lastActive', label: 'Last Active' },
-  { key: 'actions', label: 'Actions' }
-]
 
 // Role options for filter
 const roleOptions = [
@@ -248,39 +259,17 @@ const fetchUsers = async () => {
     loading.value = true
     error.value = null
     
-    // Mock data for now - replace with actual API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    users.value = [
-      {
-        id: 1,
-        name: 'John Doe',
-        email: 'john@example.com',
-        avatar: 'https://avatars.githubusercontent.com/u/1?v=4',
-        role: 'admin',
-        status: 'active',
-        lastActive: Date.now() / 1000 - 3600,
-        joinedAt: Date.now() / 1000 - 86400 * 30
-      },
-      {
-        id: 2,
-        name: 'Jane Smith',
-        email: 'jane@example.com',
-        role: 'manager',
-        status: 'active',
-        lastActive: Date.now() / 1000 - 7200,
-        joinedAt: Date.now() / 1000 - 86400 * 15
-      },
-      {
-        id: 3,
-        name: 'Bob Wilson',
-        email: 'bob@example.com',
-        role: 'member',
-        status: 'pending',
-        lastActive: 0,
-        joinedAt: Date.now() / 1000 - 86400 * 2
+    const response = await $fetch('http://localhost:8787/api/organizationRelations/users', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token.value}`,
+        'orgId': String(props.organizationId)
       }
-    ]
+    })
+    
+    // @ts-ignore - API response typing
+    users.value = response.data || []
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load users'
     console.error('Error fetching users:', err)
@@ -289,17 +278,21 @@ const fetchUsers = async () => {
   }
 }
 
-const inviteUser = () => {
-  console.log('Invite user to organization:', props.organizationId)
-  // Open invite modal or navigate to invite page
+const toggleInviteModal = () => {
+  showInviteModal.value = !showInviteModal.value
 }
 
-const handleSearch = () => {
-  // Search is reactive through computed property
-}
-
-const handleRoleFilter = () => {
-  // Filter is reactive through computed property
+const handleUsersAdded = async (userDetails: { id: number; email: string; roleId: number }[]) => {
+  console.log('Users added:', userDetails)
+  showInviteModal.value = false
+  
+  // Refresh the users list
+  await fetchUsers()
+  
+  // Refresh roles in SearchUsers component if needed
+  if (searchUsersRef.value?.refreshRoles) {
+    searchUsersRef.value.refreshRoles()
+  }
 }
 
 const getUserActions = (user: User) => [
@@ -331,14 +324,23 @@ const removeUser = (userId: number) => {
   console.log('Remove user:', userId)
 }
 
-const getRoleColor = (role: string) => {
-  const colors: Record<string, string> = {
+const getRoleColor = (role: string): 'error' | 'primary' | 'secondary' | 'warning' | 'info' => {
+  const colors: Record<string, 'error' | 'primary' | 'secondary' | 'warning' | 'info'> = {
     admin: 'error',
     manager: 'warning',
     member: 'primary',
     viewer: 'secondary'
   }
   return colors[role] || 'secondary'
+}
+
+const getStatusColor = (status: string): 'success' | 'warning' | 'error' => {
+  const colors: Record<string, 'success' | 'warning' | 'error'> = {
+    active: 'success',
+    pending: 'warning',
+    inactive: 'error'
+  }
+  return colors[status] || 'warning'
 }
 
 const formatLastActive = (timestamp: number) => {
@@ -350,13 +352,15 @@ const formatLastActive = (timestamp: number) => {
   if (diff < 3600) {
     const minutes = Math.floor(diff / 60)
     return `${minutes}m ago`
-  } else if (diff < 86400) {
+  }
+  
+  if (diff < 86400) {
     const hours = Math.floor(diff / 3600)
     return `${hours}h ago`
-  } else {
-    const days = Math.floor(diff / 86400)
-    return `${days}d ago`
   }
+  
+  const days = Math.floor(diff / 86400)
+  return `${days}d ago`
 }
 
 // Lifecycle

@@ -1,7 +1,8 @@
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">    <!-- Loading State -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Loading State -->
     <div v-if="loading" class="flex flex-col justify-center items-center min-h-[400px] py-8 space-y-3">
-      <USpinner size="lg" />
+      <ULoading />
       <p class="text-gray-600 dark:text-gray-300 font-medium">Loading organization details...</p>
     </div>
 
@@ -59,11 +60,15 @@
                 </div>
               </div>
             </div>
-          </div>        </div>      </div>
-
-      <!-- Dynamic Section Content -->
+          </div>
+        </div>
+      </div>      <!-- Dynamic Section Content -->
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md">
         <div class="p-8">
+          <!-- Debug Info -->
+          <div class="mb-4 p-2 bg-blue-100 dark:bg-blue-900 rounded text-sm">
+            Active Section: {{ activeSection }}
+          </div>
 
           <!-- Overview Section (Default) -->
           <OrganizationSectionsOverviewSection 
@@ -138,16 +143,8 @@ const organizationId = computed(() => {
 // Auth composable
 const { isAuthenticated } = useAuth()
 
-// Use the same global state as the layout
-const currentSection = useState('currentSection', () => 'overview')
-const activeSection = computed(() => currentSection.value)
-
-// Listen to navigation events from sidebar
-const handleSectionChange = (section: string) => {
-  console.log('Page: Section change received:', section)
-  currentSection.value = section
-  console.log('Page: Active section updated to:', currentSection.value)
-}
+// Use the global state for section management (shared with layout)
+const activeSection = useState('currentSection', () => 'overview')
 
 // Reactive state
 const organization = ref<Organization | null>(null)

@@ -414,7 +414,7 @@ async function addUsers() {
                     class="min-w-[150px]"
                     :loading="rolesLoading"
                     :disabled="isUserInOrganization(row.original.id)"
-                    @focus="fetchRoles"
+                    @focus="() => fetchRoles()"
                 />
             </template>
             <!-- Status column slot -->
