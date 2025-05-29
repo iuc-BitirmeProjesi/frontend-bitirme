@@ -37,6 +37,7 @@ const validationError = ref('')
 const showRolesModal = ref(false)
 const modalClosing = ref(false)
 const tabsRef = ref(null)
+const searchUsersRef = ref<{ refreshRoles: () => void } | null>(null)
 const forceTabUpdate = ref(0) // Used to force tab updates
 
 // Organization data
@@ -175,6 +176,11 @@ function handleRoleCreated() {
   showRolesModal.value = false
   fetchRoles()
   rolesRefreshKey.value++ // trigger RolesTable refresh
+  
+  // Also refresh roles in SearchUsers component if it exists
+  if (searchUsersRef.value?.refreshRoles) {
+    searchUsersRef.value.refreshRoles()
+  }
 }
 
 // Fetch all organization users and update the preview
@@ -495,10 +501,9 @@ function goToOrganizationPage() {
                 <UIcon name="lucide:info" class="text-xl" />
               </template>
             </UAlert>
-            
-            <!-- User management section -->
+              <!-- User management section -->
             <template v-if="completedTabs.roles">
-              <OrganizationSearchUsers :orgId="orgId" @users-added="handleUsersAdded"/>
+              <OrganizationSearchUsers ref="searchUsersRef" :orgId="orgId" @users-added="handleUsersAdded"/>
               <!-- See Organization button -->
               <UButton 
                 label="See Organization" 

@@ -19,11 +19,12 @@ const props = defineProps<{
 const rolesLoading = ref(false)
 
 // Function to fetch roles when needed
-const fetchRoles = async () => {
-    if (roles.value.length > 0 || rolesLoading.value) return
+const fetchRoles = async (forceRefresh = false) => {
+    if (!forceRefresh && (roles.value.length > 0 || rolesLoading.value)) return
     
     rolesLoading.value = true
-    try {        const res = await useFetch('http://localhost:8787/api/organizationRoles/all', {
+    try {        
+        const res = await $fetch('http://localhost:8787/api/organizationRoles/all', {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -32,7 +33,7 @@ const fetchRoles = async () => {
             }
         })
         //@ts-ignore
-        roles.value = res.data.value.data.map((r) => ({
+        roles.value = res.data.map((r) => ({
             id: r.id,
             name: r.name
         }))
@@ -41,6 +42,11 @@ const fetchRoles = async () => {
     } finally {
         rolesLoading.value = false
     }
+}
+
+// Function to refresh roles (for external use)
+const refreshRoles = () => {
+    return fetchRoles(true)
 }
 
 const selectOptions = computed(() =>
@@ -196,14 +202,8 @@ watch(existingUsers, (newExistingUsers) => {
         
         if (selectionChanged) {
             rowSelection.value = currentSelection
-        }
-    }
+        }    }
 }, { deep: true })
-
-
-
-
-
 
 let debounceTimeout: ReturnType<typeof setTimeout>
 const foundUsers = ref<User[]>([]);
@@ -253,6 +253,11 @@ watch(() => userState.finds, (newValue) => {
 })
 
 const emit = defineEmits(['users-added'])
+
+// Expose refreshRoles function to parent component
+defineExpose({
+    refreshRoles
+})
 
 // Computed property to check if all selected users have roles assigned
 const allSelectedUsersHaveRoles = computed(() => {
@@ -400,8 +405,7 @@ async function addUsers() {
             <UInput v-model="userState.finds" placeholder="Search User" required class="w-full" />
         </UFormField>        <UTable v-if="foundUsers.length > 0" :data="foundUsers" :columns="columns" ref="table"
             v-model:row-selection="rowSelection" @select="onSelect" :key="`table-key-${columns.length}-${selectOptions.length}-${existingUsers.length}`">
-            <!-- Role select slot -->
-            <template #role-cell="{ row }">
+            <!-- Role select slot -->            <template #role-cell="{ row }">
                 <USelect 
                     :model-value="selectedRoles[row.original.id] ?? null"
                     @update:model-value="(value) => selectedRoles[row.original.id] = value"
