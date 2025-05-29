@@ -19,21 +19,21 @@ const props = defineProps<{
 const rolesLoading = ref(false)
 
 // Function to fetch roles when needed
-const fetchRoles = async () => {
-    if (roles.value.length > 0 || rolesLoading.value) return
+const fetchRoles = async (forceRefresh = false) => {
+    if (!forceRefresh && (roles.value.length > 0 || rolesLoading.value)) return
     
     rolesLoading.value = true
-    try {
-        const res = await useFetch('http://localhost:8787/api/organizationRoles/all', {
+    try {        
+        const res = await $fetch('http://localhost:8787/api/organizationRoles/all', {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token.value}`,
-                "orgId": `${props.orgId}`
+                "orgId": String(props.orgId)
             }
         })
         //@ts-ignore
-        roles.value = res.data.value.data.map((r) => ({
+        roles.value = res.data.map((r) => ({
             id: r.id,
             name: r.name
         }))
@@ -42,6 +42,11 @@ const fetchRoles = async () => {
     } finally {
         rolesLoading.value = false
     }
+}
+
+// Function to refresh roles (for external use)
+const refreshRoles = () => {
+    return fetchRoles(true)
 }
 
 const selectOptions = computed(() =>
@@ -116,13 +121,12 @@ const existingUsers = ref<number[]>([]) // Array of user IDs that are already in
 const fetchExistingUsers = async () => {
     if (!props.orgId) return
     
-    try {
-        const res = await $fetch('http://localhost:8787/api/organizationRelations/users', {
+    try {        const res = await $fetch('http://localhost:8787/api/organizationRelations/users', {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token.value}`,
-                'orgId': props.orgId
+                'orgId': String(props.orgId)
             }
         })
         
@@ -184,7 +188,8 @@ watch(existingUsers, (newExistingUsers) => {
         const currentSelection = { ...rowSelection.value }
         let selectionChanged = false
         
-        Object.keys(currentSelection).forEach(rowIndex => {
+        // biome-ignore lint/complexity/noForEach: <explanation>
+                Object.keys(currentSelection).forEach(rowIndex => {
             if (currentSelection[rowIndex]) {
                 const user = foundUsers.value[Number(rowIndex)]
                 if (user && isUserInOrganization(user.id)) {
@@ -197,14 +202,8 @@ watch(existingUsers, (newExistingUsers) => {
         
         if (selectionChanged) {
             rowSelection.value = currentSelection
-        }
-    }
+        }    }
 }, { deep: true })
-
-
-
-
-
 
 let debounceTimeout: ReturnType<typeof setTimeout>
 const foundUsers = ref<User[]>([]);
@@ -255,6 +254,11 @@ watch(() => userState.finds, (newValue) => {
 
 const emit = defineEmits(['users-added'])
 
+// Expose refreshRoles function to parent component
+defineExpose({
+    refreshRoles
+})
+
 // Computed property to check if all selected users have roles assigned
 const allSelectedUsersHaveRoles = computed(() => {
     // Get selected user IDs
@@ -290,33 +294,74 @@ async function addUsers() {
     if (selectedUserIds.length === 0) {
         console.warn('No users selected')
         return
-    }
-
-    // Build the request body according to the specified format
+    }    // Build the request body according to the specified format
     const usersToAdd = selectedUserIds.map(userId => {
         const roleId = selectedRoles[userId]
         console.log(`User ID: ${userId}, Role ID: ${roleId}`)
-        return {
-            roleId: roleId,
-            userId: userId
+        
+        // Validate each user's data before adding to payload
+        if (!userId || userId === null || userId === undefined) {
+            console.error('Invalid userId:', userId)
+            return null
         }
-    }).filter(user => user.roleId) // Only include users with assigned roles
+        
+        if (!roleId || roleId === null || roleId === undefined) {
+            console.error('Invalid roleId for user:', userId, 'roleId:', roleId)
+            return null
+        }
+        
+        return {
+            roleId: Number(roleId), // Ensure roleId is a number
+            userId: Number(userId)  // Ensure userId is a number
+        }
+    }).filter((user): user is { roleId: number; userId: number } => 
+        user !== null && user?.roleId != null && user?.userId != null
+    ) // Filter out invalid entries
 
-    console.log('Users to add:', usersToAdd)
+    console.log('Users to add (after validation):', usersToAdd);
+    console.log('Individual user data validation:');
+    usersToAdd.forEach((user, index) => {
+        console.log(`User ${index + 1}:`, {
+            userId: user.userId,
+            userIdType: typeof user.userId,
+            roleId: user.roleId,
+            roleIdType: typeof user.roleId,            isUserIdValid: user.userId !== null && user.userId !== undefined && !Number.isNaN(user.userId),
+            isRoleIdValid: user.roleId !== null && user.roleId !== undefined && !Number.isNaN(user.roleId)
+        })
+    });
 
     if (usersToAdd.length === 0) {
         console.warn('No users with assigned roles')
         return
-    }    try {        console.log('Sending request with body:', usersToAdd)
-        await $fetch('http://localhost:8787/api/organizationRelations/addUser', {
+    }    // Validate orgId before making the request
+    if (!props.orgId) {
+        console.error('orgId is undefined or empty:', props.orgId)
+        return
+    }    try {
+        console.log('=== API REQUEST DEBUG ===')
+        console.log('Sending request with body:', usersToAdd)
+        console.log('OrgId being sent:', props.orgId, 'Type:', typeof props.orgId)
+        console.log('Request URL:', 'http://localhost:8787/api/organizationRelations/addUser')
+        console.log('Request method:', 'POST')
+        console.log('Full headers:', {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token.value}`,
+            'orgId': String(props.orgId)
+        })
+        console.log('Full request body:', JSON.stringify(usersToAdd, null, 2))
+        console.log('=== END DEBUG ===')
+        
+        const response = await $fetch('http://localhost:8787/api/organizationRelations/addUser', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token.value}`,
-                'orgId': `${props.orgId}`
+                'orgId': String(props.orgId)
             },
             body: usersToAdd
         })
+        
+        console.log('API Response received:', response)
 
         console.log('Users added successfully to API')
 
@@ -342,11 +387,13 @@ async function addUsers() {
         rowSelection.value = {}
         for (const key of Object.keys(selectedRoles)) {
             delete selectedRoles[Number(key)]
-        }
-        
-        console.log('Users added process completed')
-    } catch (error) {
+        }        console.log('Users added process completed')
+    } catch (error: unknown) {
+        console.error('=== API ERROR DEBUG ===')
         console.error('Failed to add users:', error)
+        console.error('Error type:', typeof error)
+        console.error('Full error object:', JSON.stringify(error, null, 2))
+        console.error('=== END ERROR DEBUG ===')
     }
 }
 
@@ -358,8 +405,7 @@ async function addUsers() {
             <UInput v-model="userState.finds" placeholder="Search User" required class="w-full" />
         </UFormField>        <UTable v-if="foundUsers.length > 0" :data="foundUsers" :columns="columns" ref="table"
             v-model:row-selection="rowSelection" @select="onSelect" :key="`table-key-${columns.length}-${selectOptions.length}-${existingUsers.length}`">
-            <!-- Role select slot -->
-            <template #role-cell="{ row }">
+            <!-- Role select slot -->            <template #role-cell="{ row }">
                 <USelect 
                     :model-value="selectedRoles[row.original.id] ?? null"
                     @update:model-value="(value) => selectedRoles[row.original.id] = value"
@@ -368,7 +414,7 @@ async function addUsers() {
                     class="min-w-[150px]"
                     :loading="rolesLoading"
                     :disabled="isUserInOrganization(row.original.id)"
-                    @focus="fetchRoles"
+                    @focus="() => fetchRoles()"
                 />
             </template>
             <!-- Status column slot -->
