@@ -10,10 +10,8 @@
           <OrganizationCreateOrg />
         </template>
       </UModal>
-    </div>
-
-    <div v-if="loading" class="flex flex-col justify-center items-center min-h-[400px] py-8 space-y-3">
-      <ULoading />
+    </div>    <div v-if="loading" class="flex flex-col justify-center items-center min-h-[400px] py-8 space-y-3">
+      <USpinner size="lg" />
       <p class="text-gray-600 dark:text-gray-300 font-medium">Getting your organizations...</p>
     </div>
 
@@ -51,9 +49,8 @@
           <p class="text-gray-500 dark:text-gray-300 mb-6 line-clamp-2" style="min-height: 3rem">
             {{ org.description || 'No description provided' }}
           </p>
-          
-          <div class="flex items-center justify-between mt-4">
-            <UButton color="primary" variant="soft" :to="'/organizations/' + org.id">
+            <div class="flex items-center justify-between mt-4">
+            <UButton color="primary" variant="soft" :to="'/' + org.id">
               View Details
             </UButton>
             <p class="text-xs text-gray-400">
