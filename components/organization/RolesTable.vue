@@ -21,7 +21,7 @@ interface Role {
 
 // ----- Props -----
 const props = defineProps<{
-    orgId: string; // Organization ID for fetching roles
+    orgId: string | number; // Organization ID for fetching roles
     refreshKey?: number;
 }>();
 
@@ -38,13 +38,19 @@ if (!token.value) {
 
 // ----- Data Fetching -----
 const fetchRoles = async () => {
+    // Clear existing data first
+    rolesData.value = [];
+    
     const result = await useFetch<{ data: Role[] }>('http://localhost:8787/api/organizationRoles/all', {
-        method: 'GET',
-        headers: {
+        method: 'GET',        headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token.value}`,
-            "orgId": `${props.orgId}`
-        }
+            "orgId": String(props.orgId)
+        },
+        // Use unique cache key per organization to prevent cache conflicts
+        key: `roles-${props.orgId}`,
+        // Disable server-side caching for this specific request
+        server: false
     });
 
     if (result.data.value?.data) {
@@ -69,6 +75,15 @@ const closeModal = () => {
 }
 
 // ----- Watchers -----
+// Watch for orgId changes to refetch data for new organization
+watch(() => props.orgId, (newOrgId, oldOrgId) => {
+    if (newOrgId && newOrgId !== oldOrgId) {
+        console.log(`Organization changed from ${oldOrgId} to ${newOrgId}, refetching roles`);
+        fetchRoles();
+    }
+}, { immediate: false });
+
+// Watch for manual refresh trigger
 watch(() => props.refreshKey, () => {
     fetchRoles();
 });
