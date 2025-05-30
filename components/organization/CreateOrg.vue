@@ -87,7 +87,7 @@ function updateUserSummary(users: User[]) {
 }
 
 // Default logo to show in the preview if none provided
-const defaultLogo = 'https://www.diabetes.ie/wp-content/uploads/2021/05/logo-Placeholder.jpg'
+const defaultLogo = 'http://localhost:8787/api/bucket/public/8c25f65c-f978-484b-9173-e0551b29e912'
 const logoPreview = computed(() => organizationState.logo || defaultLogo)
 
 // Router instance
