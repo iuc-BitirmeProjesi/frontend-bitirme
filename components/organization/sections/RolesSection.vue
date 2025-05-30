@@ -134,7 +134,7 @@
                   <UBadge 
                     v-for="permission in getPermissionsList(role.permissions)" 
                     :key="permission"
-                    color="gray" 
+                    color="secondary" 
                     variant="outline" 
                     size="xs"
                   >
@@ -150,7 +150,7 @@
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <UDropdown :items="getRoleActions(role)">
-                  <UButton color="gray" variant="ghost" icon="i-heroicons-ellipsis-horizontal" />
+                  <UButton color="secondary" variant="ghost" icon="i-heroicons-ellipsis-horizontal" />
                 </UDropdown>
               </td>
             </tr>
@@ -184,7 +184,7 @@
               <UCheckbox 
                 v-for="permission in availablePermissions" 
                 :key="permission.value"
-                v-model="newRole.permissions"
+                :v-model="newRole.permissions"
                 :value="permission.value"
                 :label="permission.label"
               />
@@ -194,7 +194,7 @@
 
         <template #footer>
           <div class="flex justify-end gap-3">
-            <UButton color="gray" variant="ghost" @click="showCreateRole = false">
+            <UButton color="secondary" variant="ghost" @click="showCreateRole = false">
               Cancel
             </UButton>
             <UButton color="primary" @click="createRole" :loading="creating">
@@ -353,7 +353,7 @@ const createRole = async () => {
 
 const getRoleIcon = (type: string) => {
   const icons = {
-    'Admin': 'i-heroicons-crown',
+    'Admin': 'i-heroicons-bolt',
     'Manager': 'i-heroicons-briefcase',
     'Member': 'i-heroicons-user',
     'Custom': 'i-heroicons-cog-6-tooth'
