@@ -48,6 +48,11 @@ const organizationState = reactive({
 })
 const orgId = ref('')
 
+// Logo upload state
+const logoFile = ref<File | null>(null)
+const logoUploading = ref(false)
+const logoUploadError = ref('')
+
 // Define types for roles and users
 interface Role {
   name: string;
@@ -87,6 +92,74 @@ const logoPreview = computed(() => organizationState.logo || defaultLogo)
 
 // Router instance
 const router = useRouter()
+
+// ===== IMAGE UPLOAD FUNCTIONS =====
+// Handle file selection for logo upload
+async function handleLogoUpload(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  
+  if (!file) return
+  
+  // Validate file type
+  if (!file.type.startsWith('image/')) {
+    logoUploadError.value = 'Please select an image file'
+    return
+  }
+  
+  // Validate file size (max 5MB)
+  if (file.size > 5 * 1024 * 1024) {
+    logoUploadError.value = 'File size must be less than 5MB'
+    return
+  }
+  
+  logoFile.value = file
+  logoUploadError.value = ''
+  
+  // Upload the file immediately
+  await uploadLogo(file)
+}
+
+// Upload logo to the server
+async function uploadLogo(file: File) {
+  const token = useCookie('auth_token')
+  if (!token.value) {
+    logoUploadError.value = 'Authentication required'
+    return
+  }
+  
+  logoUploading.value = true
+  logoUploadError.value = ''
+  
+  try {
+    // Convert file to binary data
+    const arrayBuffer = await file.arrayBuffer()
+    
+    const response = await $fetch('http://localhost:8787/api/bucket/uploadPicture', {
+      method: 'POST',
+      headers: {
+        'type': 'organization',
+        'Content-Type': file.type,
+        'Authorization': `Bearer ${token.value}`
+      },
+      body: arrayBuffer
+    })
+    
+    // Set the returned URL to organizationState.logo
+    if (response && (response as any).url) {
+      organizationState.logo = (response as any).url
+      console.log('Logo uploaded successfully:', organizationState.logo)
+    } else {
+      throw new Error('Invalid response from upload API')
+    }
+  } catch (error) {
+    console.error('Logo upload failed:', error)
+    logoUploadError.value = 'Failed to upload logo. Please try again.'
+    organizationState.logo = ''
+  } finally {
+    logoUploading.value = false
+  }
+}
 
 // ===== API OPERATIONS =====
 // Create a new organization and proceed to the next tab if successful
@@ -330,6 +403,10 @@ function resetCreateOrgState() {
   userSummary.value = []
   capturedRoles.value = []
   capturedUsers.value = []
+  // Reset logo upload state
+  logoFile.value = null
+  logoUploading.value = false
+  logoUploadError.value = ''
 }
 
 // Reset state when component is mounted
@@ -415,12 +492,48 @@ function goToOrganizationPage() {
             <UForm :state="organizationState" class="flex flex-col gap-6" @submit.prevent="createOrganization">
               <UFormField label="Organization Name" name="name" size="xl" required>
                 <UInput v-model="organizationState.name" class="w-full" size="lg" placeholder="Enter your organization name" />
-              </UFormField>
-              <UFormField label="Description" name="description" size="xl" hint="Help people understand what your organization does">
+              </UFormField>              <UFormField label="Description" name="description" size="xl" hint="Help people understand what your organization does">
                 <UTextarea v-model="organizationState.description" class="w-full" size="lg" placeholder="Describe your organization's purpose and goals" :rows="3" />
               </UFormField>
-              <UFormField label="Logo URL" name="logo" size="xl" hint="Paste a link to your organization's logo">
-                <UInput v-model="organizationState.logo" class="w-full" size="lg" placeholder="https://example.com/logo.png" />
+              <UFormField label="Organization Logo" name="logo" size="xl" hint="Upload your organization's logo (max 5MB)">
+                <div class="space-y-3">
+                  <UInput 
+                    type="file" 
+                    accept="image/*"
+                    class="w-full" 
+                    size="lg"
+                    @change="handleLogoUpload"
+                    :disabled="logoUploading"
+                  />
+                  
+                  <!-- Upload status -->
+                  <div v-if="logoUploading" class="flex items-center gap-2 text-sm text-blue-600">
+                    <UIcon name="lucide:loader-2" class="animate-spin" />
+                    <span>Uploading logo...</span>
+                  </div>
+                  
+                  <!-- Upload error -->
+                  <div v-if="logoUploadError" class="text-sm text-red-600">
+                    <UIcon name="lucide:alert-circle" class="inline mr-1" />
+                    {{ logoUploadError }}
+                  </div>
+                  
+                  <!-- Upload success -->
+                  <div v-if="organizationState.logo && !logoUploading" class="flex items-center gap-2 text-sm text-green-600">
+                    <UIcon name="lucide:check-circle" />
+                    <span>Logo uploaded successfully</span>
+                  </div>
+                  
+                  <!-- Logo preview -->
+                  <div v-if="organizationState.logo" class="mt-3">
+                    <img 
+                      :src="organizationState.logo" 
+                      alt="Logo preview" 
+                      class="w-20 h-20 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
+                      onerror="this.style.display='none'"
+                    />
+                  </div>
+                </div>
               </UFormField>
                 <UButton 
                 label="Create and Continue" 
