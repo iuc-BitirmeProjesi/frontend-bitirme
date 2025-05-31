@@ -12,7 +12,7 @@
     </div>    <!-- Invite User Modal -->
     <UModal v-model="showInviteModal">
       <UCard>
-        <div class="p-6">
+        <div class="p-6" @click.stop>
           <div class="flex items-center justify-between mb-6">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
               Invite Users to Organization
@@ -38,47 +38,51 @@
                 @focus.stop
               />
             </UFormField>
-            
-            <UTable 
+              <UTable 
               v-if="foundUsers.length > 0" 
               :data="foundUsers" 
               :columns="userSearchColumns" 
               ref="userSearchTable"
               v-model:row-selection="rowSelection" 
               @select="onSelectUser" 
+              @click.stop
               :key="`table-key-${userSearchColumns.length}-${roleSelectOptions.length}-${existingUsers.length}`"
-            >
-              <!-- Role select slot -->
+            >              <!-- Role select slot -->
               <template #role-cell="{ row }">
-                <USelect 
-                  :model-value="selectedRoles[row.original.id] ?? null"
-                  @update:model-value="(value) => selectedRoles[row.original.id] = value"
-                  :items="roleSelectOptions"
-                  placeholder="Select Role"
-                  class="min-w-[150px]"
-                  :loading="rolesLoading"
-                  :disabled="isUserInOrganization(row.original.id)"
-                  @focus="() => fetchRolesForSearch()"
-                />
+                <div @click.stop>
+                  <USelect 
+                    :model-value="selectedRoles[row.original.id] ?? null"
+                    @update:model-value="(value) => selectedRoles[row.original.id] = value"
+                    :items="roleSelectOptions"
+                    placeholder="Select Role"
+                    class="min-w-[150px]"
+                    :loading="rolesLoading"
+                    :disabled="isUserInOrganization(row.original.id)"
+                    @focus="() => fetchRolesForSearch()"
+                    @click.stop
+                  />
+                </div>
               </template>
               <!-- Status column slot -->
               <template #status-cell="{ row }">
-                <UBadge 
-                  v-if="isUserInOrganization(row.original.id)"
-                  color="primary"
-                  variant="subtle"
-                  size="sm"
-                >
-                  Already in organization
-                </UBadge>
-                <UBadge 
-                  v-else
-                  color="secondary"
-                  variant="subtle"
-                  size="sm"
-                >
-                  Available
-                </UBadge>
+                <div @click.stop>
+                  <UBadge 
+                    v-if="isUserInOrganization(row.original.id)"
+                    color="primary"
+                    variant="subtle"
+                    size="sm"
+                  >
+                    Already in organization
+                  </UBadge>
+                  <UBadge 
+                    v-else
+                    color="secondary"
+                    variant="subtle"
+                    size="sm"
+                  >
+                    Available
+                  </UBadge>
+                </div>
               </template>
             </UTable>
               <!-- Add Users button -->
