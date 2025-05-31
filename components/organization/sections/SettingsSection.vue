@@ -12,21 +12,28 @@
       <div class="lg:col-span-1">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
           <div class="p-4">
-            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Settings</h3>
-            <nav class="space-y-1">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Settings</h3>            <nav class="space-y-1">
               <button
                 v-for="section in settingSections"
                 :key="section.key"
-                @click="activeSection = section.key"
+                @click="section.disabled ? null : activeSection = section.key"
                 :class="[
                   'w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
-                  activeSection === section.key
-                    ? 'bg-primary/10 text-primary border-primary'
-                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
+                  section.disabled 
+                    ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed bg-gray-50 dark:bg-gray-700/50' 
+                    : activeSection === section.key
+                      ? 'bg-primary/10 text-primary border-primary'
+                      : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
                 ]"
+                :disabled="section.disabled"
               >
                 <UIcon :name="section.icon" class="w-4 h-4 mr-3" />
                 {{ section.label }}
+                <UIcon 
+                  v-if="section.disabled" 
+                  name="i-heroicons-lock-closed" 
+                  class="w-3 h-3 ml-auto text-gray-400" 
+                />
               </button>
             </nav>
           </div>
@@ -108,11 +115,18 @@
               </div>
             </form>
           </div>
-        </div>
-
-        <!-- Security Settings -->
-        <div v-else-if="activeSection === 'security'" class="bg-white dark:bg-gray-800 rounded-lg shadow">
-          <div class="p-6">
+        </div>        <!-- Security Settings -->
+        <div v-else-if="activeSection === 'security'" class="bg-white dark:bg-gray-800 rounded-lg shadow relative">
+          <!-- Disabled Overlay -->
+          <div class="absolute inset-0 bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-lg z-10 flex items-center justify-center">
+            <div class="text-center">
+              <UIcon name="i-heroicons-lock-closed" class="w-12 h-12 text-gray-400 mx-auto mb-3" />
+              <h4 class="text-lg font-medium text-gray-600 dark:text-gray-400 mb-2">Coming Soon</h4>
+              <p class="text-sm text-gray-500 dark:text-gray-500">Security features will be available in a future update</p>
+            </div>
+          </div>
+          
+          <div class="p-6 pointer-events-none">
             <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-6">Security & Access</h3>
             
             <div class="space-y-6">
@@ -161,11 +175,18 @@
               </div>
             </div>
           </div>
-        </div>
-
-        <!-- Notifications Settings -->
-        <div v-else-if="activeSection === 'notifications'" class="bg-white dark:bg-gray-800 rounded-lg shadow">
-          <div class="p-6">
+        </div>        <!-- Notifications Settings -->
+        <div v-else-if="activeSection === 'notifications'" class="bg-white dark:bg-gray-800 rounded-lg shadow relative">
+          <!-- Disabled Overlay -->
+          <div class="absolute inset-0 bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-lg z-10 flex items-center justify-center">
+            <div class="text-center">
+              <UIcon name="i-heroicons-bell-slash" class="w-12 h-12 text-gray-400 mx-auto mb-3" />
+              <h4 class="text-lg font-medium text-gray-600 dark:text-gray-400 mb-2">Coming Soon</h4>
+              <p class="text-sm text-gray-500 dark:text-gray-500">Notification features will be available in a future update</p>
+            </div>
+          </div>
+          
+          <div class="p-6 pointer-events-none">
             <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-6">Notification Preferences</h3>
             
             <div class="space-y-6">
@@ -220,86 +241,7 @@
                 </UButton>
               </div>
             </div>
-          </div>
-        </div>
-
-        <!-- Billing Settings -->
-        <div v-else-if="activeSection === 'billing'" class="bg-white dark:bg-gray-800 rounded-lg shadow">
-          <div class="p-6">
-            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-6">Billing & Subscription</h3>
-            
-            <div class="space-y-6">
-              <!-- Current Plan -->
-              <div class="p-4 border border-gray-200 dark:border-gray-600 rounded-lg">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <h4 class="text-lg font-medium text-gray-900 dark:text-white">Pro Plan</h4>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">$29/month • Billed monthly</p>
-                  </div>
-                  <UBadge color="success" variant="subtle">Active</UBadge>
-                </div>
-                <div class="mt-4 grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p class="text-gray-500 dark:text-gray-400">Users</p>
-                    <p class="font-medium text-gray-900 dark:text-white">15 / 50</p>
-                  </div>
-                  <div>
-                    <p class="text-gray-500 dark:text-gray-400">Projects</p>
-                    <p class="font-medium text-gray-900 dark:text-white">8 / Unlimited</p>
-                  </div>
-                </div>
-                <div class="mt-4">
-                  <UButton color="secondary" variant="outline" size="sm">
-                    Change Plan
-                  </UButton>
-                </div>
-              </div>
-
-              <!-- Payment Method -->
-              <div>
-                <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-4">Payment Method</h4>
-                <div class="p-4 border border-gray-200 dark:border-gray-600 rounded-lg">
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center">
-                      <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center mr-3">
-                        <UIcon name="i-heroicons-credit-card" class="w-4 h-4 text-white" />
-                      </div>
-                      <div>
-                        <p class="text-sm font-medium text-gray-900 dark:text-white">•••• •••• •••• 4242</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">Expires 12/25</p>
-                      </div>
-                    </div>
-                    <UButton color="secondary" variant="outline" size="sm">
-                      Update
-                    </UButton>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Billing History -->
-              <div>
-                <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-4">Recent Invoices</h4>
-                <div class="space-y-2">
-                  <div v-for="invoice in recentInvoices" :key="invoice.id" class="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-600 rounded-lg">
-                    <div class="flex items-center">
-                      <div>
-                        <p class="text-sm font-medium text-gray-900 dark:text-white">{{ invoice.description }}</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(invoice.date) }}</p>
-                      </div>
-                    </div>
-                    <div class="flex items-center space-x-3">
-                      <span class="text-sm font-medium text-gray-900 dark:text-white">${{ invoice.amount }}</span>
-                      <UBadge :color="invoice.status === 'paid' ? 'success' : 'warning'" variant="subtle">
-                        {{ invoice.status }}
-                      </UBadge>
-                      <UButton color="gray" variant="ghost" size="xs" icon="i-heroicons-arrow-down-tray" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+          </div>        </div>
 
         <!-- Danger Zone -->
         <div v-else-if="activeSection === 'danger'" class="bg-white dark:bg-gray-800 rounded-lg shadow border border-red-200 dark:border-red-800">
@@ -312,8 +254,7 @@
                 <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-2">Transfer Ownership</h4>
                 <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
                   Transfer this organization to another user. You will lose admin access.
-                </p>
-                <UButton color="red" variant="outline" size="sm">
+                </p>                <UButton color="error" variant="outline" size="sm">
                   Transfer Organization
                 </UButton>
               </div>
@@ -323,8 +264,7 @@
                 <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-2">Delete Organization</h4>
                 <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
                   Permanently delete this organization and all of its data. This action cannot be undone.
-                </p>
-                <UButton color="red" size="sm" @click="showDeleteConfirm = true">
+                </p>                <UButton color="error" size="sm" @click="showDeleteConfirm = true">
                   Delete Organization
                 </UButton>
               </div>
@@ -355,10 +295,8 @@
           <div class="flex justify-end gap-3">
             <UButton color="secondary" variant="ghost" @click="showDeleteConfirm = false">
               Cancel
-            </UButton>
-            <UButton 
-            
-              color="red" 
+            </UButton>            <UButton 
+              color="error" 
               :disabled="deleteConfirmation !== settings.name"
               @click="deleteOrganization"
               :loading="deleting"
@@ -400,12 +338,19 @@ const settings = ref({
 
 // Setting sections
 const settingSections = [
-  { key: 'general', label: 'General', icon: 'i-heroicons-building-office' },
-  { key: 'security', label: 'Security', icon: 'i-heroicons-shield-check' },
-  { key: 'notifications', label: 'Notifications', icon: 'i-heroicons-bell' },
-  { key: 'billing', label: 'Billing', icon: 'i-heroicons-credit-card' },
-  { key: 'danger', label: 'Danger Zone', icon: 'i-heroicons-exclamation-triangle' }
+  { key: 'general', label: 'General', icon: 'i-heroicons-building-office', disabled: false },
+  { key: 'security', label: 'Security', icon: 'i-heroicons-shield-check', disabled: true },
+  { key: 'notifications', label: 'Notifications', icon: 'i-heroicons-bell', disabled: true },
+  { key: 'danger', label: 'Danger Zone', icon: 'i-heroicons-exclamation-triangle', disabled: false }
 ]
+
+// Watch for disabled section access and redirect to general
+watch(activeSection, (newSection) => {
+  const section = settingSections.find(s => s.key === newSection)
+  if (section?.disabled) {
+    activeSection.value = 'general'
+  }
+})
 
 // Options
 const industryOptions = [
@@ -430,33 +375,8 @@ const sessionTimeoutOptions = [
   { label: '1 hour', value: '1h' },
   { label: '4 hours', value: '4h' },
   { label: '8 hours', value: '8h' },
-  { label: '24 hours', value: '24h' },
-  { label: 'Never', value: 'never' }
+  { label: '24 hours', value: '24h' },  { label: 'Never', value: 'never' }
 ]
-
-const recentInvoices = ref([
-  {
-    id: 1,
-    description: 'Pro Plan - Monthly',
-    amount: 29,
-    date: Date.now() / 1000 - 86400 * 30,
-    status: 'paid'
-  },
-  {
-    id: 2,
-    description: 'Pro Plan - Monthly',
-    amount: 29,
-    date: Date.now() / 1000 - 86400 * 60,
-    status: 'paid'
-  },
-  {
-    id: 3,
-    description: 'Pro Plan - Monthly',
-    amount: 29,
-    date: Date.now() / 1000 - 86400 * 90,
-    status: 'paid'
-  }
-])
 
 // Methods
 const saveGeneralSettings = async () => {
