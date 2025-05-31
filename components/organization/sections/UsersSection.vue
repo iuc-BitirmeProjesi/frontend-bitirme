@@ -49,9 +49,8 @@
               :key="`table-key-${userSearchColumns.length}-${roleSelectOptions.length}-${existingUsers.length}`"
             >              <!-- Role select slot -->
               <template #role-cell="{ row }">
-                <div @click.stop>
-                  <USelect 
-                    :model-value="selectedRoles[row.original.id] ?? null"
+                <div @click.stop>                  <USelect 
+                    :model-value="selectedRoles[row.original.id] ?? undefined"
                     @update:model-value="(value) => selectedRoles[row.original.id] = value"
                     :items="roleSelectOptions"
                     placeholder="Select Role"
@@ -323,14 +322,18 @@ const roleOptions = [
 const filteredUsers = computed(() => {
   let filtered = users.value
 
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(user => 
-      user.name.toLowerCase().includes(query) ||
-      user.email.toLowerCase().includes(query)
-    )
+  // Filter by search query (name or email)
+  if (searchQuery.value && searchQuery.value.trim()) {
+    const query = searchQuery.value.toLowerCase().trim()
+    filtered = filtered.filter(user => {
+      // Safely check if name and email exist before calling toLowerCase
+      const nameMatch = user.name ? user.name.toLowerCase().includes(query) : false
+      const emailMatch = user.email ? user.email.toLowerCase().includes(query) : false
+      return nameMatch || emailMatch
+    })
   }
 
+  // Filter by selected role
   if (selectedRole.value) {
     filtered = filtered.filter(user => user.role === selectedRole.value)
   }
