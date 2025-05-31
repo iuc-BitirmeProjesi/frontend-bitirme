@@ -13,10 +13,8 @@
       >
         Create Role
       </UButton>
-    </div>
-
-    <!-- Stats Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    </div>    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <div class="flex items-center">
           <div class="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
@@ -40,21 +38,7 @@
           </div>
         </div>
       </div>
-
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <div class="flex items-center">
-          <div class="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
-            <UIcon name="i-heroicons-key" class="w-6 h-6 text-purple-600 dark:text-purple-400" />
-          </div>
-          <div class="ml-4">
-            <p class="text-sm font-medium text-gray-600 dark:text-gray-300">Custom Roles</p>
-            <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ customRoles }}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Filters and Search -->
+    </div>    <!-- Filters and Search -->
     <div class="flex flex-col sm:flex-row gap-4">
       <div class="flex-1">
         <UInput
@@ -64,12 +48,6 @@
           class="w-full"
         />
       </div>
-      <USelect
-        v-model="filterType"
-        :options="roleTypeOptions"
-        placeholder="Filter by type"
-        class="w-full sm:w-48"
-      />
     </div>
 
     <!-- Roles Table -->    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
@@ -87,15 +65,11 @@
         </p>
       </div>
 
-      <div v-else class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+      <div v-else class="overflow-x-auto">        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Role
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Type
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Permissions
@@ -110,13 +84,12 @@
                 Actions
               </th>
             </tr>
-          </thead>
-          <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+          </thead>          <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             <tr v-for="role in filteredRoles" :key="role.id" class="hover:bg-gray-50 dark:hover:bg-gray-700">
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
                   <div class="p-2 bg-primary/10 rounded-lg mr-3">
-                    <UIcon :name="getRoleIcon(role.type)" class="w-4 h-4 text-primary" />
+                    <UIcon name="i-heroicons-shield-check" class="w-4 h-4 text-primary" />
                   </div>
                   <div>
                     <div class="text-sm font-medium text-gray-900 dark:text-white">{{ role.name }}</div>
@@ -125,20 +98,22 @@
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <UBadge :color="getRoleTypeColor(role.type)" variant="subtle">
-                  {{ role.type }}
-                </UBadge>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex flex-wrap gap-1">
                   <UBadge 
-                    v-for="permission in getPermissionsList(role.permissions)" 
+                    v-for="permission in getPermissionsList(role.permissionFlags)" 
                     :key="permission"
                     color="secondary" 
                     variant="outline" 
                     size="xs"
                   >
                     {{ permission }}
+                  </UBadge>                  <UBadge 
+                    v-if="Object.keys(role.permissionFlags).filter(key => role.permissionFlags[key]).length > 3"
+                    color="secondary" 
+                    variant="outline" 
+                    size="xs"
+                  >
+                    +{{ Object.keys(role.permissionFlags).filter(key => role.permissionFlags[key]).length - 3 }} more
                   </UBadge>
                 </div>
               </td>
@@ -165,8 +140,7 @@
         <template #header>
           <h3 class="text-lg font-semibold">Create New Role</h3>
         </template>
-        
-        <div class="space-y-4">
+          <div class="space-y-4">
           <UFormGroup label="Role Name" required>
             <UInput v-model="newRole.name" placeholder="Enter role name" />
           </UFormGroup>
@@ -175,20 +149,8 @@
             <UTextarea v-model="newRole.description" placeholder="Enter role description" />
           </UFormGroup>
           
-          <UFormGroup label="Role Type" required>
-            <USelect v-model="newRole.type" :options="roleTypeOptions" />
-          </UFormGroup>
-          
           <UFormGroup label="Permissions">
-            <div class="grid grid-cols-2 gap-2">
-              <UCheckbox 
-                v-for="permission in availablePermissions" 
-                :key="permission.value"
-                :v-model="newRole.permissions"
-                :value="permission.value"
-                :label="permission.label"
-              />
-            </div>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Permission management would be implemented here</p>
           </UFormGroup>
         </div>
 
@@ -212,46 +174,32 @@ interface Role {
   id: number
   name: string
   description: string
-  type: 'Admin' | 'Manager' | 'Member' | 'Custom'
-  permissions: string[]
+  permissionFlags: Record<string, boolean>
   memberCount?: number
   createdAt: number
 }
+
+interface Props {
+  organizationId: string | number
+}
+
+const props = defineProps<Props>()
 
 // Reactive state
 const roles = ref<Role[]>([])
 const loading = ref(true)
 const creating = ref(false)
 const searchQuery = ref('')
-const filterType = ref('')
 const showCreateRole = ref(false)
 
 const newRole = ref({
   name: '',
   description: '',
-  type: 'Custom',
-  permissions: [] as string[]
+  permissionFlags: {} as Record<string, boolean>
 })
 
-// Options
-const roleTypeOptions = [
-  { label: 'All Types', value: '' },
-  { label: 'Admin', value: 'Admin' },
-  { label: 'Manager', value: 'Manager' },
-  { label: 'Member', value: 'Member' },
-  { label: 'Custom', value: 'Custom' }
-]
-
-const availablePermissions = [
-  { label: 'Read Projects', value: 'read_projects' },
-  { label: 'Create Projects', value: 'create_projects' },
-  { label: 'Edit Projects', value: 'edit_projects' },
-  { label: 'Delete Projects', value: 'delete_projects' },
-  { label: 'Manage Users', value: 'manage_users' },
-  { label: 'Manage Roles', value: 'manage_roles' },
-  { label: 'Organization Settings', value: 'org_settings' },
-  { label: 'View Analytics', value: 'view_analytics' }
-]
+// Token for API requests
+const token = useCookie('auth_token')
 
 // Computed properties
 const filteredRoles = computed(() => {
@@ -265,52 +213,33 @@ const filteredRoles = computed(() => {
     )
   }
 
-  if (filterType.value) {
-    filtered = filtered.filter(role => role.type === filterType.value)
-  }
-
   return filtered
 })
 
 const activeRoles = computed(() => roles.value.length)
-const customRoles = computed(() => roles.value.filter(role => role.type === 'Custom').length)
 
 // Methods
 const fetchRoles = async () => {
   loading.value = true
   try {
-    // Mock data for now
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    roles.value = [
-      {
-        id: 1,
-        name: 'Organization Admin',
-        description: 'Full access to organization settings and management',
-        type: 'Admin',
-        permissions: ['read_projects', 'create_projects', 'edit_projects', 'delete_projects', 'manage_users', 'manage_roles', 'org_settings', 'view_analytics'],
-        memberCount: 2,
-        createdAt: Date.now() / 1000 - 86400 * 30
-      },
-      {
-        id: 2,
-        name: 'Project Manager',
-        description: 'Can manage projects and team members',
-        type: 'Manager',
-        permissions: ['read_projects', 'create_projects', 'edit_projects', 'manage_users', 'view_analytics'],
-        memberCount: 5,
-        createdAt: Date.now() / 1000 - 86400 * 15
-      },
-      {
-        id: 3,
-        name: 'Team Member',
-        description: 'Standard team member with project access',
-        type: 'Member',
-        permissions: ['read_projects', 'create_projects'],
-        memberCount: 12,
-        createdAt: Date.now() / 1000 - 86400 * 7
+    const res = await $fetch('http://localhost:8787/api/organizationRoles/all', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token.value}`,
+        'orgId': String(props.organizationId)
       }
-    ]
+    })
+    
+    //@ts-ignore
+    roles.value = res.data.map((role) => ({
+      id: role.id,
+      name: role.name,
+      description: role.description || '',
+      permissionFlags: role.permissionFlags || {},
+      memberCount: 0, // This would need to come from API if available
+      createdAt: role.createdAt || Date.now() / 1000
+    }))
   } catch (error) {
     console.error('Error fetching roles:', error)
   } finally {
@@ -321,28 +250,15 @@ const fetchRoles = async () => {
 const createRole = async () => {
   creating.value = true
   try {
-    // Mock API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    const role: Role = {
-      id: Date.now(),
-      name: newRole.value.name,
-      description: newRole.value.description,
-      type: newRole.value.type as Role['type'],
-      permissions: newRole.value.permissions,
-      memberCount: 0,
-      createdAt: Date.now() / 1000
-    }
-    
-    roles.value.push(role)
+    // This would be implemented when role creation is needed
+    console.log('Create role functionality would go here')
     showCreateRole.value = false
     
     // Reset form
     newRole.value = {
       name: '',
       description: '',
-      type: 'Custom',
-      permissions: []
+      permissionFlags: {}
     }
   } catch (error) {
     console.error('Error creating role:', error)
@@ -351,31 +267,9 @@ const createRole = async () => {
   }
 }
 
-const getRoleIcon = (type: string) => {
-  const icons = {
-    'Admin': 'i-heroicons-bolt',
-    'Manager': 'i-heroicons-briefcase',
-    'Member': 'i-heroicons-user',
-    'Custom': 'i-heroicons-cog-6-tooth'
-  }
-  return icons[type as keyof typeof icons] || 'i-heroicons-user'
-}
-
-const getRoleTypeColor = (type: string): 'primary' | 'secondary' | 'success' | 'warning' | 'error' => {
-  const colors = {
-    'Admin': 'error' as const,
-    'Manager': 'warning' as const,
-    'Member': 'success' as const,
-    'Custom': 'primary' as const
-  }
-  return colors[type as keyof typeof colors] || 'primary'
-}
-
-const getPermissionsList = (permissions: string[]) => {
-  return permissions.slice(0, 3).map(p => {
-    const permission = availablePermissions.find(ap => ap.value === p)
-    return permission?.label || p
-  })
+const getPermissionsList = (permissionFlags: Record<string, boolean>) => {
+  const enabledPermissions = Object.keys(permissionFlags).filter(key => permissionFlags[key])
+  return enabledPermissions.slice(0, 3) // Show only first 3 permissions
 }
 
 const getRoleActions = (role: Role) => {
@@ -420,6 +314,11 @@ const formatDate = (timestamp: number) => {
 
 // Initialize data
 onMounted(() => {
+  fetchRoles()
+})
+
+// Watch for organization changes
+watch(() => props.organizationId, () => {
   fetchRoles()
 })
 </script>
