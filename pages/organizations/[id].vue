@@ -93,12 +93,11 @@
           <OrganizationSectionsRolesSection 
             v-else-if="activeSection === 'roles'"
             :organization-id="organizationId"
-          />
-
-          <!-- Settings Section -->
+          />          <!-- Settings Section -->
           <OrganizationSectionsSettingsSection 
             v-else-if="activeSection === 'settings'"
             :organization="organization"
+            @refresh="refreshData"
           />
 
           <!-- Fallback Debug -->
