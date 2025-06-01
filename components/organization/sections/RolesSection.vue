@@ -1,21 +1,20 @@
 <template>
-  <div class="space-y-6">
+  <div class="space-y-6" @click.stop>
     <!-- Header -->
     <div class="flex justify-between items-center">
       <div>
         <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Roles & Permissions</h2>
         <p class="text-gray-600 dark:text-gray-300 mt-1">Manage organization roles and permissions</p>
-      </div>
-      <UButton 
+      </div>      <UButton 
         icon="i-heroicons-plus"
         color="primary"
-        @click="showCreateRole = true"
+        @click.stop="scrollToForm"
       >
         Create Role
       </UButton>
     </div>    <!-- Stats Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6" @click.stop>
         <div class="flex items-center">
           <div class="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
             <UIcon name="i-heroicons-user-group" class="w-6 h-6 text-blue-600 dark:text-blue-400" />
@@ -27,7 +26,7 @@
         </div>
       </div>
 
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6" @click.stop>
         <div class="flex items-center">
           <div class="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
             <UIcon name="i-heroicons-shield-check" class="w-6 h-6 text-green-600 dark:text-green-400" />
@@ -39,23 +38,24 @@
         </div>
       </div>
     </div>    <!-- Filters and Search -->
-    <div class="flex flex-col sm:flex-row gap-4">
+    <div class="flex flex-col sm:flex-row gap-4" @click.stop>
       <div class="flex-1">
         <UInput
           v-model="searchQuery"
           icon="i-heroicons-magnifying-glass"
           placeholder="Search roles..."
           class="w-full"
+          @click.stop
+          @focus.stop
         />
       </div>
     </div>
 
-    <!-- Roles Table -->    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-      <div v-if="loading" class="flex justify-center items-center py-12">
+    <!-- Roles Table -->    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden" @click.stop>      <div v-if="loading" class="flex justify-center items-center py-12" @click.stop>
         <USpinner size="lg" />
       </div>
       
-      <div v-else-if="filteredRoles.length === 0" class="text-center py-12">
+      <div v-else-if="filteredRoles.length === 0" class="text-center py-12" @click.stop>
         <div class="w-24 h-24 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mx-auto mb-4">
           <UIcon name="i-heroicons-user-group" class="w-12 h-12 text-gray-400" />
         </div>
@@ -65,7 +65,7 @@
         </p>
       </div>
 
-      <div v-else class="overflow-x-auto">        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+      <div v-else class="overflow-x-auto">        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700" @click.stop>
           <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -84,9 +84,8 @@
                 Actions
               </th>
             </tr>
-          </thead>          <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            <tr v-for="role in filteredRoles" :key="role.id" class="hover:bg-gray-50 dark:hover:bg-gray-700">
-              <td class="px-6 py-4 whitespace-nowrap">
+          </thead>          <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700" @click.stop>
+            <tr v-for="role in filteredRoles" :key="role.id" class="hover:bg-gray-50 dark:hover:bg-gray-700" @click.stop>              <td class="px-6 py-4 whitespace-nowrap" @click.stop>
                 <div class="flex items-center">
                   <div class="p-2 bg-primary/10 rounded-lg mr-3">
                     <UIcon name="i-heroicons-shield-check" class="w-4 h-4 text-primary" />
@@ -96,85 +95,113 @@
                     <div class="text-sm text-gray-500 dark:text-gray-400">{{ role.description }}</div>
                   </div>
                 </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex flex-wrap gap-1">
+              </td><td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex flex-wrap gap-1" @click.stop>
                   <UBadge 
                     v-for="permission in getPermissionsList(role.permissionFlags)" 
                     :key="permission"
                     color="secondary" 
                     variant="outline" 
                     size="xs"
+                    @click.stop
                   >
                     {{ permission }}
                   </UBadge>                  <UBadge 
-                    v-if="Object.keys(role.permissionFlags).filter(key => role.permissionFlags[key]).length > 3"
+                    v-if="getEnabledPermissionsCount(role.permissionFlags) > 3"
                     color="secondary" 
                     variant="outline" 
                     size="xs"
+                    @click.stop
                   >
-                    +{{ Object.keys(role.permissionFlags).filter(key => role.permissionFlags[key]).length - 3 }} more
+                    +{{ getEnabledPermissionsCount(role.permissionFlags) - 3 }} more
                   </UBadge>
                 </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+              </td>              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white" @click.stop>
                 {{ role.memberCount || 0 }}
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400" @click.stop>
                 {{ formatDate(role.createdAt) }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <UDropdown :items="getRoleActions(role)">
-                  <UButton color="secondary" variant="ghost" icon="i-heroicons-ellipsis-horizontal" />
+                <UDropdown :items="getRoleActions(role)" @click.stop>
+                  <UButton color="secondary" variant="ghost" icon="i-heroicons-ellipsis-horizontal" @click.stop />
                 </UDropdown>
               </td>
             </tr>
-          </tbody>
-        </table>
+          </tbody>        </table>
+      </div>
+    </div>    <!-- Create Role Form -->
+    <div class="create-role-form bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-6 mt-6" @click.stop>
+      <div class="mb-6">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Create New Role</h3>
+      </div>
+      
+      <div class="space-y-4">
+        <UFormGroup label="Role Name" required>
+          <UInput 
+            v-model="newRole.name" 
+            placeholder="Enter role name" 
+            @click.stop
+            @focus.stop
+          />
+        </UFormGroup>
+        
+        <UFormGroup label="Description">
+          <UTextarea 
+            v-model="newRole.description" 
+            placeholder="Enter role description"
+            @click.stop
+            @focus.stop
+          />
+        </UFormGroup>
+        
+        <UFormGroup label="Permissions">
+          <div @click.stop>
+            <OrganizationManageRoles 
+              :initialState="permissionFlags"
+              @update:state="handlePermissionUpdate"
+            />
+          </div>
+        </UFormGroup>
+      </div>
+      
+      <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">        <UButton 
+          color="secondary" 
+          variant="ghost" 
+          @click.stop="clearForm"
+        >
+          Clear Form
+        </UButton>
+        <UButton 
+          color="primary" 
+          @click.stop="createRole" 
+          :loading="creating"
+        >
+          Create Role
+        </UButton>
       </div>
     </div>
-
-    <!-- Create Role Modal -->
-    <UModal v-model="showCreateRole">
-      <UCard>
-        <template #header>
-          <h3 class="text-lg font-semibold">Create New Role</h3>
-        </template>
-          <div class="space-y-4">
-          <UFormGroup label="Role Name" required>
-            <UInput v-model="newRole.name" placeholder="Enter role name" />
-          </UFormGroup>
-          
-          <UFormGroup label="Description">
-            <UTextarea v-model="newRole.description" placeholder="Enter role description" />
-          </UFormGroup>
-          
-          <UFormGroup label="Permissions">
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Permission management would be implemented here</p>
-          </UFormGroup>
-        </div>
-
-        <template #footer>
-          <div class="flex justify-end gap-3">
-            <UButton color="secondary" variant="ghost" @click="showCreateRole = false">
-              Cancel
-            </UButton>
-            <UButton color="primary" @click="createRole" :loading="creating">
-              Create Role
-            </UButton>
-          </div>
-        </template>
-      </UCard>
-    </UModal>
   </div>
 </template>
 
 <script setup lang="ts">
+// Define the interface for permissions to ensure type safety
+interface PermissionFlags {
+  admin: boolean;
+  editOrganization: boolean;
+  deleteOrganization: boolean;
+  editMembers: boolean;
+  editRoles: boolean;
+  editProjects: boolean;
+  createProjects: boolean;
+  deleteProjects: boolean;
+}
+
 interface Role {
   id: number
   name: string
   description: string
-  permissionFlags: Record<string, boolean>
+  permissionFlags: PermissionFlags
   memberCount?: number
   createdAt: number
 }
@@ -190,12 +217,33 @@ const roles = ref<Role[]>([])
 const loading = ref(true)
 const creating = ref(false)
 const searchQuery = ref('')
-const showCreateRole = ref(false)
+const flagsModified = ref(false)
+
+// Permission flags state
+const permissionFlags = ref<PermissionFlags>({
+  admin: false,
+  editOrganization: false,
+  deleteOrganization: false,
+  editMembers: false,
+  editRoles: false,
+  editProjects: false,
+  createProjects: false,
+  deleteProjects: false,
+})
 
 const newRole = ref({
   name: '',
   description: '',
-  permissionFlags: {} as Record<string, boolean>
+  permissionFlags: {
+    admin: false,
+    editOrganization: false,
+    deleteOrganization: false,
+    editMembers: false,
+    editRoles: false,
+    editProjects: false,
+    createProjects: false,
+    deleteProjects: false,
+  } as PermissionFlags
 })
 
 // Token for API requests
@@ -217,6 +265,70 @@ const filteredRoles = computed(() => {
 })
 
 const activeRoles = computed(() => roles.value.length)
+
+// Permission management functions
+const handlePermissionUpdate = (state: PermissionFlags) => {
+  // Make a copy of the state to avoid reference issues
+  permissionFlags.value = { ...state }
+  
+  // Also update the newRole
+  newRole.value.permissionFlags = permissionFlags.value
+  
+  // Mark flags as modified
+  flagsModified.value = true
+  
+  console.log('Updated permissionFlags:', permissionFlags.value)
+}
+
+const clearForm = () => {
+  resetForm()
+}
+
+const scrollToForm = () => {
+  // Use nextTick to ensure DOM is updated
+  nextTick(() => {
+    const formElement = document.querySelector('.create-role-form')
+    if (formElement) {
+      formElement.scrollIntoView({ behavior: 'smooth' })
+    }
+  })
+}
+
+// Handler for when a role is successfully created
+const onRoleCreated = () => {
+  resetForm()
+  fetchRoles() // Refresh the roles list
+}
+
+const resetForm = () => {
+  newRole.value = {
+    name: '',
+    description: '',
+    permissionFlags: {
+      admin: false,
+      editOrganization: false,
+      deleteOrganization: false,
+      editMembers: false,
+      editRoles: false,
+      editProjects: false,
+      createProjects: false,
+      deleteProjects: false,
+    }
+  }
+  
+  permissionFlags.value = {
+    admin: false,
+    editOrganization: false,
+    deleteOrganization: false,
+    editMembers: false,
+    editRoles: false,
+    editProjects: false,
+    createProjects: false,
+    deleteProjects: false,
+  }
+  
+  flagsModified.value = false
+}
 
 // Methods
 const fetchRoles = async () => {
@@ -250,16 +362,32 @@ const fetchRoles = async () => {
 const createRole = async () => {
   creating.value = true
   try {
-    // This would be implemented when role creation is needed
-    console.log('Create role functionality would go here')
-    showCreateRole.value = false
+    // Ensure the latest permission flags are included
+    newRole.value.permissionFlags = { ...permissionFlags.value }
     
-    // Reset form
-    newRole.value = {
-      name: '',
-      description: '',
-      permissionFlags: {}
+    const roleData = {
+      name: newRole.value.name,
+      description: newRole.value.description,
+      permissionFlags: newRole.value.permissionFlags,
+      organizationId: props.organizationId
     }
+    
+    const result = await $fetch('http://localhost:8787/api/organizationRoles/create', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token.value}`
+      },
+      body: roleData
+    })
+    
+    console.log('Role created:', result)
+      // Refresh the roles list
+    await fetchRoles()
+    
+    // Reset form after successful creation
+    resetForm()
+    
   } catch (error) {
     console.error('Error creating role:', error)
   } finally {
@@ -267,9 +395,16 @@ const createRole = async () => {
   }
 }
 
-const getPermissionsList = (permissionFlags: Record<string, boolean>) => {
-  const enabledPermissions = Object.keys(permissionFlags).filter(key => permissionFlags[key])
+const getPermissionsList = (permissionFlags: PermissionFlags) => {
+  const enabledPermissions = Object.keys(permissionFlags).filter(key => 
+    permissionFlags[key as keyof PermissionFlags]
+  )
   return enabledPermissions.slice(0, 3) // Show only first 3 permissions
+}
+
+// Helper function to get count of enabled permissions
+const getEnabledPermissionsCount = (permissionFlags: PermissionFlags) => {
+  return Object.values(permissionFlags).filter(Boolean).length
 }
 
 const getRoleActions = (role: Role) => {
