@@ -201,10 +201,72 @@
                     </div>
                   </div>
                 </div>
-              </div>
-              <p class="text-sm text-gray-500 dark:text-gray-400">
+              </div>              <p class="text-sm text-gray-500 dark:text-gray-400">
                 Select the type that best matches your project's main objective
               </p>
+            </div>
+
+            <!-- Create Classes -->
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  Class Labels
+                </label>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  Add class labels that will be used for annotation. You can add more classes later.
+                </p>
+                  <!-- Add Class Input -->
+                <div class="flex space-x-2 mb-4">                  <UInput
+                    v-model="newClassName"
+                    placeholder="Enter class name(s) - separate multiple with commas (e.g., 'cat, dog, person')"
+                    size="lg"
+                    :disabled="creating || isAddingClass"
+                    class="flex-1"
+                    @keydown.enter="handleAddClassKeydown"
+                  />
+                  <UButton
+                    @click="addClass"
+                    :disabled="!newClassName.trim() || creating || isAddingClass"
+                    icon="i-heroicons-plus"
+                    size="lg"
+                    color="primary"
+                  >
+                    Add
+                  </UButton>
+                </div>
+
+                <!-- Classes List -->
+                <div v-if="projectForm.classes.length > 0" class="space-y-2">
+                  <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Added Classes ({{ projectForm.classes.length }})
+                  </h4>
+                  <div class="flex flex-wrap gap-2">
+                    <div
+                      v-for="(className, index) in projectForm.classes"
+                      :key="index"
+                      class="flex items-center space-x-2 bg-primary/10 text-primary px-3 py-2 rounded-lg border border-primary/20"
+                    >
+                      <span class="text-sm font-medium">{{ className }}</span>
+                      <UButton
+                        @click="removeClass(index)"
+                        icon="i-heroicons-x-mark"
+                        size="xs"
+                        color="primary"
+                        variant="ghost"
+                        :disabled="creating"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Empty State -->
+                <div v-else class="text-center py-6 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg">
+                  <UIcon name="i-heroicons-tag" class="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                  <p class="text-sm text-gray-500 dark:text-gray-400">
+                    No classes added yet. Add your first class above.
+                  </p>
+                </div>
+              </div>
             </div>
 
             <!-- Form Actions -->
@@ -288,9 +350,36 @@
                     </p>
                     <p v-if="selectedProjectType" class="text-xs text-gray-500 dark:text-gray-400">
                       {{ selectedProjectType.description }}
-                    </p>
+                    </p>                  </div>
+                </div>
+              </div>
+              
+              <!-- Classes Preview -->
+              <div>
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Classes</label>
+                <div v-if="projectForm.classes.length > 0" class="mt-1">
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                    {{ projectForm.classes.length }} class{{ projectForm.classes.length !== 1 ? 'es' : '' }} added
+                  </p>
+                  <div class="flex flex-wrap gap-1">
+                    <span
+                      v-for="className in projectForm.classes.slice(0, 5)"
+                      :key="className"
+                      class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-primary/10 text-primary border border-primary/20"
+                    >
+                      {{ className }}
+                    </span>
+                    <span
+                      v-if="projectForm.classes.length > 5"
+                      class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+                    >
+                      +{{ projectForm.classes.length - 5 }} more
+                    </span>
                   </div>
                 </div>
+                <p v-else class="text-gray-500 dark:text-gray-400 text-sm mt-1">
+                  No classes added yet
+                </p>
               </div>
             </div>
 
@@ -299,11 +388,12 @@
               <div class="flex items-start space-x-2">
                 <UIcon name="i-heroicons-light-bulb" class="w-5 h-5 text-blue-500 mt-0.5" />
                 <div>
-                  <h4 class="text-sm font-medium text-blue-900 dark:text-blue-200 mb-1">Tips</h4>
-                  <ul class="text-xs text-blue-700 dark:text-blue-300 space-y-1">
+                  <h4 class="text-sm font-medium text-blue-900 dark:text-blue-200 mb-1">Tips</h4>                  <ul class="text-xs text-blue-700 dark:text-blue-300 space-y-1">
                     <li>• Choose a descriptive name for your project</li>
                     <li>• Add a clear description to help team members understand the project goals</li>
                     <li>• Select the appropriate project type for better organization</li>
+                    <li>• Add class labels that represent the categories you want to identify</li>
+                    <li>• You can always add more classes later in the project settings</li>
                   </ul>
                 </div>
               </div>            </div>
@@ -342,8 +432,13 @@ const organizationLogo = ref<string>('')
 const projectForm = reactive({
   name: '',
   description: '',
-  projectType: 1
+  projectType: 1,
+  classes: [] as string[]
 })
+
+// Classes management state
+const newClassName = ref('')
+const isAddingClass = ref(false)
 
 // Project type options
 const projectTypes = [
@@ -371,6 +466,91 @@ const getProjectTypeIcon = (type: number) => {
     case 3: return 'i-heroicons-chart-bar'
     default: return 'i-heroicons-folder'
   }
+}
+
+const addClass = () => {
+  const input = newClassName.value.trim()
+  
+  if (!input) {
+    return
+  }
+  
+  // Split by comma and clean up each class name
+  const classNames = input
+    .split(',')
+    .map(name => name.trim())
+    .filter(name => name.length > 0)
+  
+  if (classNames.length === 0) {
+    return
+  }
+  
+  const addedClasses: string[] = []
+  const duplicateClasses: string[] = []
+  
+  // Process each class name
+  classNames.forEach(className => {
+    if (projectForm.classes.includes(className)) {
+      duplicateClasses.push(className)
+    } else {
+      projectForm.classes.push(className)
+      addedClasses.push(className)
+    }
+  })
+  
+  // Clear the input
+  newClassName.value = ''
+  
+  // Show success message for added classes
+  if (addedClasses.length > 0) {
+    if (addedClasses.length === 1) {
+      toast.add({
+        title: 'Class Added',
+        description: `Class "${addedClasses[0]}" has been added`,
+        color: 'success'
+      })
+    } else {
+      toast.add({
+        title: 'Classes Added',
+        description: `${addedClasses.length} classes have been added: ${addedClasses.join(', ')}`,
+        color: 'success'
+      })
+    }
+  }
+  
+  // Show warning for duplicates
+  if (duplicateClasses.length > 0) {
+    if (duplicateClasses.length === 1) {
+      toast.add({
+        title: 'Duplicate Class',
+        description: `Class "${duplicateClasses[0]}" already exists`,
+        color: 'warning'
+      })
+    } else {
+      toast.add({
+        title: 'Duplicate Classes',
+        description: `${duplicateClasses.length} classes already exist: ${duplicateClasses.join(', ')}`,
+        color: 'warning'
+      })
+    }
+  }
+}
+
+const handleAddClassKeydown = (event: KeyboardEvent) => {
+  event.preventDefault()
+  event.stopPropagation()
+  addClass()
+}
+
+const removeClass = (index: number) => {
+  const className = projectForm.classes[index]
+  projectForm.classes.splice(index, 1)
+  
+  toast.add({
+    title: 'Class Removed',
+    description: `Class "${className}" has been removed`,
+    color: 'info'
+  })
 }
 
 const fetchOrganizationInfo = async () => {
