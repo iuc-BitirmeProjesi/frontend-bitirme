@@ -883,13 +883,15 @@ const createProject = async () => {
 
   creating.value = true
   error.value = null
-
   try {
     const projectData = {
       organizationId: Number.parseInt(organizationId.value),
       name: projectForm.name,
       description: projectForm.description,
-      projectType: projectForm.projectType
+      projectType: projectForm.projectType,
+      labelConfig: {
+        classes: projectForm.classes
+      }
     }
 
     const response = await fetch('http://localhost:8787/api/projects', {
