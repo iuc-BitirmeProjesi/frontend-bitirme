@@ -257,13 +257,136 @@
                       />
                     </div>
                   </div>
-                </div>
-
-                <!-- Empty State -->
+                </div>                <!-- Empty State -->
                 <div v-else class="text-center py-6 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg">
                   <UIcon name="i-heroicons-tag" class="w-8 h-8 text-gray-400 mx-auto mb-2" />
                   <p class="text-sm text-gray-500 dark:text-gray-400">
                     No classes added yet. Add your first class above.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- File Upload Section -->
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  Upload Images
+                </label>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  Upload images for labeling. Supported formats: JPG, PNG, GIF, WebP. You can also upload ZIP files containing images.
+                </p>                <!-- File Drop Zone -->
+                <div
+                  @drop="handleDrop"
+                  @dragover.prevent
+                  @dragenter.prevent="isDragging = true"
+                  @dragleave.prevent="isDragging = false"
+                  class="relative border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-primary/50 transition-colors"
+                  :class="{ 'border-primary bg-primary/5': isDragging }"
+                >
+                  <input
+                    ref="fileInput"
+                    type="file"
+                    multiple
+                    accept="image/*,.zip"
+                    @change="handleFileSelect"
+                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    :disabled="creating || isUploading"
+                  />
+                  
+                  <div class="space-y-3">
+                    <div class="flex justify-center">
+                      <UIcon name="i-heroicons-cloud-arrow-up" class="w-12 h-12 text-gray-400" />
+                    </div>
+                    <div>
+                      <p class="text-lg font-medium text-gray-900 dark:text-white">
+                        Drop files here or click to browse
+                      </p>
+                      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        Images (JPG, PNG, GIF, WebP) or ZIP files up to 50MB each
+                      </p>
+                    </div>
+                    <UButton
+                      type="button"
+                      color="primary"
+                      variant="outline"
+                      icon="i-heroicons-folder-open"
+                      :disabled="creating || isUploading"
+                    >
+                      Choose Files
+                    </UButton>
+                  </div>
+                </div>
+
+                <!-- Upload Progress -->
+                <div v-if="isUploading" class="mt-4">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Uploading files...</span>
+                    <span class="text-sm text-gray-500">{{ uploadProgress }}%</span>
+                  </div>
+                  <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      class="bg-primary h-2 rounded-full transition-all duration-300"
+                      :style="{ width: `${uploadProgress}%` }"
+                    ></div>
+                  </div>
+                </div>
+
+                <!-- Uploaded Files List -->
+                <div v-if="uploadedFiles.length > 0" class="mt-4 space-y-3">
+                  <div class="flex items-center justify-between">
+                    <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Uploaded Files ({{ uploadedFiles.length }})
+                    </h4>                    <UButton
+                      @click="clearAllFiles"
+                      variant="ghost"
+                      color="error"
+                      size="xs"
+                      icon="i-heroicons-trash"
+                      :disabled="creating || isUploading"
+                    >
+                      Clear All
+                    </UButton>
+                  </div>
+                  
+                  <div class="max-h-48 overflow-y-auto space-y-2 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                    <div
+                      v-for="(file, index) in uploadedFiles"
+                      :key="index"
+                      class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                    >
+                      <div class="flex items-center space-x-3">
+                        <div class="flex-shrink-0">
+                          <UIcon 
+                            :name="getFileIcon(file)" 
+                            class="w-5 h-5 text-gray-500" 
+                          />
+                        </div>
+                        <div class="min-w-0 flex-1">
+                          <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
+                            {{ file.name }}
+                          </p>
+                          <p class="text-xs text-gray-500 dark:text-gray-400">
+                            {{ formatFileSize(file.size) }}
+                          </p>
+                        </div>
+                      </div>                      <UButton
+                        @click="removeFile(index)"
+                        variant="ghost"
+                        color="error"
+                        size="xs"
+                        icon="i-heroicons-x-mark"
+                        :disabled="creating || isUploading"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Empty State for Files -->
+                <div v-else class="mt-4 text-center py-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                  <UIcon name="i-heroicons-photo" class="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                  <p class="text-sm text-gray-500 dark:text-gray-400">
+                    No files uploaded yet. Add images to start labeling.
                   </p>
                 </div>
               </div>
@@ -353,8 +476,7 @@
                     </p>                  </div>
                 </div>
               </div>
-              
-              <!-- Classes Preview -->
+                <!-- Classes Preview -->
               <div>
                 <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Classes</label>
                 <div v-if="projectForm.classes.length > 0" class="mt-1">
@@ -381,6 +503,40 @@
                   No classes added yet
                 </p>
               </div>
+
+              <!-- Files Preview -->
+              <div>
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Files</label>
+                <div v-if="uploadedFiles.length > 0" class="mt-1">
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                    {{ uploadedFiles.length }} file{{ uploadedFiles.length !== 1 ? 's' : '' }} uploaded
+                  </p>
+                  <div class="space-y-1">
+                    <div
+                      v-for="file in uploadedFiles.slice(0, 3)"
+                      :key="file.name"
+                      class="flex items-center space-x-2 text-xs"
+                    >
+                      <UIcon 
+                        :name="getFileIcon(file)" 
+                        class="w-3 h-3 text-gray-500 flex-shrink-0" 
+                      />
+                      <span class="text-gray-900 dark:text-white truncate">
+                        {{ file.name }}
+                      </span>
+                    </div>
+                    <div
+                      v-if="uploadedFiles.length > 3"
+                      class="text-xs text-gray-500 dark:text-gray-400 pl-5"
+                    >
+                      +{{ uploadedFiles.length - 3 }} more files
+                    </div>
+                  </div>
+                </div>
+                <p v-else class="text-gray-500 dark:text-gray-400 text-sm mt-1">
+                  No files uploaded yet
+                </p>
+              </div>
             </div>
 
             <!-- Tips -->
@@ -393,7 +549,8 @@
                     <li>• Add a clear description to help team members understand the project goals</li>
                     <li>• Select the appropriate project type for better organization</li>
                     <li>• Add class labels that represent the categories you want to identify</li>
-                    <li>• You can always add more classes later in the project settings</li>
+                    <li>• Upload images or ZIP files to start with initial data</li>
+                    <li>• You can always add more classes and files later in the project settings</li>
                   </ul>
                 </div>
               </div>            </div>
@@ -440,6 +597,11 @@ const projectForm = reactive({
 const newClassName = ref('')
 const isAddingClass = ref(false)
 
+// File upload state
+const uploadedFiles = ref<File[]>([])
+const isUploading = ref(false)
+const uploadProgress = ref(0)
+
 // Project type options
 const projectTypes = [
   { label: 'Classification', value: 1, description: 'Categorize and classify data into predefined categories or labels' },
@@ -451,6 +613,11 @@ const projectTypes = [
 const selectedProjectType = computed(() => {
   return projectTypes.find(type => type.value === projectForm.projectType)
 })
+
+const isDragging = ref(false)
+
+// Refs
+const fileInput = ref<HTMLInputElement>()
 
 // Methods
 const selectProjectType = (type: number) => {
@@ -553,6 +720,114 @@ const removeClass = (index: number) => {
   })
 }
 
+// File handling methods
+const handleDrop = (event: DragEvent) => {
+  event.preventDefault()
+  isDragging.value = false
+  
+  const files = event.dataTransfer?.files
+  if (files) {
+    handleFiles(Array.from(files))
+  }
+}
+
+const handleFileSelect = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const files = target.files
+  if (files) {
+    handleFiles(Array.from(files))
+  }
+}
+
+const handleFiles = (files: File[]) => {
+  const validFiles: File[] = []
+  const invalidFiles: string[] = []
+  
+  files.forEach(file => {
+    // Check file type
+    const isImage = file.type.startsWith('image/')
+    const isZip = file.type === 'application/zip' || file.name.toLowerCase().endsWith('.zip')
+    
+    // Check file size (50MB limit)
+    const maxSize = 50 * 1024 * 1024 // 50MB in bytes
+    
+    if (!isImage && !isZip) {
+      invalidFiles.push(`${file.name} - Invalid file type`)
+    } else if (file.size > maxSize) {
+      invalidFiles.push(`${file.name} - File too large (max 50MB)`)
+    } else if (uploadedFiles.value.some(f => f.name === file.name && f.size === file.size)) {
+      invalidFiles.push(`${file.name} - File already uploaded`)
+    } else {
+      validFiles.push(file)
+    }
+  })
+  
+  // Add valid files
+  if (validFiles.length > 0) {
+    uploadedFiles.value.push(...validFiles)
+    
+    toast.add({
+      title: 'Files Added',
+      description: `${validFiles.length} file(s) added successfully`,
+      color: 'success'
+    })
+  }
+  
+  // Show warnings for invalid files
+  if (invalidFiles.length > 0) {
+    toast.add({
+      title: 'Some Files Skipped',
+      description: invalidFiles.join(', '),
+      color: 'warning'
+    })
+  }
+  
+  // Clear the input
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
+}
+
+const removeFile = (index: number) => {
+  const fileName = uploadedFiles.value[index].name
+  uploadedFiles.value.splice(index, 1)
+  
+  toast.add({
+    title: 'File Removed',
+    description: `${fileName} has been removed`,
+    color: 'info'
+  })
+}
+
+const clearAllFiles = () => {
+  uploadedFiles.value = []
+  
+  toast.add({
+    title: 'All Files Cleared',
+    description: 'All uploaded files have been removed',
+    color: 'info'
+  })
+}
+
+const getFileIcon = (file: File) => {
+  if (file.type.startsWith('image/')) {
+    return 'i-heroicons-photo'
+  } else if (file.type === 'application/zip' || file.name.toLowerCase().endsWith('.zip')) {
+    return 'i-heroicons-archive-box'
+  }
+  return 'i-heroicons-document'
+}
+
+const formatFileSize = (bytes: number) => {
+  if (bytes === 0) return '0 Bytes'
+  
+  const k = 1024
+  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
+
 const fetchOrganizationInfo = async () => {
   if (!organizationId.value) {
     error.value = 'Organization ID is required'
@@ -608,16 +883,20 @@ const createProject = async () => {
 
   creating.value = true
   error.value = null
-
+  
   try {
+    // Step 1: Create the project
     const projectData = {
       organizationId: Number.parseInt(organizationId.value),
       name: projectForm.name,
       description: projectForm.description,
-      projectType: projectForm.projectType
+      projectType: projectForm.projectType,
+      labelConfig: {
+        classes: projectForm.classes
+      }
     }
 
-    const response = await fetch('http://localhost:8787/api/projects', {
+    const projectResponse = await fetch('http://localhost:8787/api/projects', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token.value}`,
@@ -626,19 +905,74 @@ const createProject = async () => {
       body: JSON.stringify(projectData)
     })
 
-    if (!response.ok) {
-      const errorData = await response.text()
-      throw new Error(`Failed to create project: ${response.statusText} - ${errorData}`)
+    if (!projectResponse.ok) {
+      const errorData = await projectResponse.text()
+      throw new Error(`Failed to create project: ${projectResponse.statusText} - ${errorData}`)
+    }    const projectResult = await projectResponse.json()
+    
+    // Extract project ID from response
+    const projectId = projectResult.data?.id
+
+    if (!projectId) {
+      throw new Error('Project created but no project ID returned')
     }
 
-    const result = await response.json()
-    
-    // Success! Navigate back to organization projects
-    toast.add({
-      title: 'Project Created',
-      description: `Project "${projectForm.name}" has been created successfully`,
-      color: 'success'
-    })
+    // Step 2: Upload files if any exist
+    if (uploadedFiles.value.length > 0) {
+      isUploading.value = true
+      uploadProgress.value = 0
+
+      try {
+        // Create FormData for file upload
+        const formData = new FormData()
+        uploadedFiles.value.forEach(file => {
+          formData.append('files', file)
+        })
+
+        const uploadResponse = await fetch('http://localhost:8787/api/bucket/uploadData', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token.value}`,
+            'projectId': projectId.toString()
+          },
+          body: formData
+        })
+
+        if (!uploadResponse.ok) {
+          const uploadErrorData = await uploadResponse.text()
+          console.warn(`File upload failed: ${uploadResponse.statusText} - ${uploadErrorData}`)
+          
+          toast.add({
+            title: 'Project Created with Warning',
+            description: `Project "${projectForm.name}" was created successfully, but file upload failed. You can upload files later.`,
+            color: 'warning'
+          })
+        } else {
+          toast.add({
+            title: 'Project Created Successfully',
+            description: `Project "${projectForm.name}" and ${uploadedFiles.value.length} file(s) uploaded successfully`,
+            color: 'success'
+          })
+        }
+      } catch (uploadErr) {
+        console.warn('File upload error:', uploadErr)
+        toast.add({
+          title: 'Project Created with Warning',
+          description: `Project "${projectForm.name}" was created successfully, but file upload failed. You can upload files later.`,
+          color: 'warning'
+        })
+      } finally {
+        isUploading.value = false
+        uploadProgress.value = 0
+      }
+    } else {
+      // No files to upload
+      toast.add({
+        title: 'Project Created',
+        description: `Project "${projectForm.name}" has been created successfully`,
+        color: 'success'
+      })
+    }
 
     // Navigate back to organization page
     await navigateTo(`/organizations/${organizationId.value}?section=projects`)
@@ -648,6 +982,8 @@ const createProject = async () => {
     console.error('Error creating project:', err)
   } finally {
     creating.value = false
+    isUploading.value = false
+    uploadProgress.value = 0
   }
 }
 
