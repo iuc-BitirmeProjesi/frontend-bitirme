@@ -205,9 +205,9 @@ const fetchProjects = async () => {
 }
 
 const createProject = () => {
-  // Navigate to project creation page or open modal
+  // Navigate to project creation page
   console.log('Create project for organization:', props.organizationId)
-  // navigateTo(`/organizations/${props.organizationId}/projects/create`)
+  navigateTo(`/projects/create?organizationId=${props.organizationId}`)
 }
 
 const viewProject = (projectId: number) => {

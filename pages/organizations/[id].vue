@@ -143,7 +143,11 @@ const organizationId = computed(() => {
 const { isAuthenticated } = useAuth()
 
 // Use the global state for section management (shared with layout)
-const activeSection = useState('currentSection', () => 'overview')
+const activeSection = useState('currentSection', () => {
+  // Check if there's a section query parameter
+  const sectionFromQuery = route.query.section as string
+  return sectionFromQuery || 'overview'
+})
 
 // Reactive state
 const organization = ref<Organization | null>(null)
