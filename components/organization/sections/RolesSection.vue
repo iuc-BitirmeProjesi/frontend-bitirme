@@ -131,49 +131,70 @@
           </tbody>        </table>
       </div>
     </div>    <!-- Create Role Form -->
-    <div class="create-role-form bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-6 mt-6" @click.stop>
-      <div class="mb-6">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Create New Role</h3>
+    <div class="create-role-form bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-8 mt-6" @click.stop>
+      <div class="mb-8">
+        <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Create New Role</h3>
+        <p class="text-gray-600 dark:text-gray-400">Define a new role with specific permissions for your organization</p>
       </div>
       
-      <div class="space-y-4">
-        <UFormGroup label="Role Name" required>
-          <UInput 
-            v-model="newRole.name" 
-            placeholder="Enter role name" 
-            @click.stop
-            @focus.stop
-          />
-        </UFormGroup>
-        
-        <UFormGroup label="Description">
-          <UTextarea 
-            v-model="newRole.description" 
-            placeholder="Enter role description"
-            @click.stop
-            @focus.stop
-          />
-        </UFormGroup>
-        
-        <UFormGroup label="Permissions">
-          <div @click.stop>
-            <OrganizationManageRoles 
-              :initialState="permissionFlags"
-              @update:state="handlePermissionUpdate"
+      <div class="space-y-8">        <div class="space-y-2">
+          <UFormGroup label="Role Name" required>
+            <template #description>
+              <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">Choose a descriptive name for this role (e.g., "Project Manager", "Developer")</p>
+            </template>
+            <UInput 
+              v-model="newRole.name" 
+              placeholder="Enter role name" 
+              size="xl"
+              class="w-full"
+              @click.stop
+              @focus.stop
             />
-          </div>
-        </UFormGroup>
-      </div>
-      
-      <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">        <UButton 
+          </UFormGroup>
+        </div>
+        
+        <div class="space-y-2">
+          <UFormGroup label="Description">
+            <template #description>
+              <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">Provide a brief description of this role's responsibilities (optional)</p>
+            </template>
+            <UTextarea 
+              v-model="newRole.description" 
+              placeholder="Enter role description"
+              size="xl"
+              rows="4"
+              class="w-full"
+              @click.stop
+              @focus.stop
+            />
+          </UFormGroup>
+        </div>
+        
+        <div class="space-y-2">
+          <UFormGroup label="Permissions">
+            <template #description>
+              <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Select the permissions this role should have. Changes are saved automatically.</p>
+            </template>
+            <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-6 border border-gray-200 dark:border-gray-700" @click.stop>
+              <OrganizationManageRoles 
+                :initialState="permissionFlags"
+                @update:state="handlePermissionUpdate"
+              />
+            </div>
+          </UFormGroup>
+        </div>
+      </div>      
+      <div class="flex justify-end gap-4 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">        <UButton 
           color="secondary" 
           variant="ghost" 
+          size="lg"
           @click.stop="clearForm"
         >
           Clear Form
         </UButton>
         <UButton 
           color="primary" 
+          size="lg"
           @click.stop="createRole" 
           :loading="creating"
         >
