@@ -194,29 +194,105 @@
             </UButton>
           </div>
         </div>
-      </div>
-
-      <!-- Content Area -->
+      </div>      <!-- Content Area -->
       <div class="flex-1 p-6 overflow-auto">
-        <div v-if="taskData" class="h-full flex items-center justify-center">
-          <!-- Image Display -->
-          <div v-if="isImageTask" class="max-w-full max-h-full">
-            <img 
-              :src="taskData.dataUrl" 
-              :alt="`Task ${taskData.id}`"
-              class="max-w-full max-h-full object-contain border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg"
-            />
+        <div v-if="taskData" class="h-full flex flex-col">
+          <!-- Annotation Tools -->
+          <div v-if="isImageTask" class="mb-4 flex items-center space-x-4">
+            <button 
+              v-for="tool in tools" 
+              :key="tool"
+              @click="selectTool(tool)"
+              :class="['px-4 py-2 rounded transition-colors', 
+                       currentTool === tool ? 'bg-blue-500 text-white' : 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white']"
+            >
+              {{ tool }}
+            </button>
+
+            <!-- Complete Button -->
+            <UButton 
+              v-if="isAnnotating"
+              @click="completeAnnotation"
+              color="success"
+              size="sm"
+            >
+              Complete
+            </UButton>
+
+            <!-- Cancel Button -->
+            <UButton 
+              v-if="isAnnotating"
+              @click="cancelAnnotation"
+              color="error"
+              size="sm"
+            >
+              Cancel
+            </UButton>
+          </div>
+
+          <!-- Canvas Container -->
+          <div v-if="isImageTask" class="flex-1 flex items-center justify-center">
+            <div class="relative" ref="canvasContainer">
+              <canvas 
+                ref="canvas"
+                @click="handleClick"
+                @mousemove="handleMouseMove"
+                @mousedown="handleMouseDown"
+                @mouseup="handleMouseUp"
+                @dblclick="handleDoubleClick"
+                class="border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg"
+                :class="{ 
+                  'cursor-crosshair': !isAnnotating && !isDragging && currentTool !== 'select',
+                  'cursor-pointer': isAnnotating || (currentTool === 'select' && hoveredAnnotation !== null),
+                  'cursor-move': isDragging,
+                }"
+              ></canvas>
+
+              <!-- Annotation Tools Overlay -->
+              <div 
+                v-if="clickedAnnotation !== null && !isAnnotating && !isDragging"
+                class="absolute bg-white dark:bg-gray-800 rounded-lg shadow-lg p-2 flex space-x-2 z-10 transition-opacity duration-200 border border-gray-200 dark:border-gray-600"
+                :style="{
+                  left: `${annotationToolsPosition.x}px`,
+                  top: `${annotationToolsPosition.y}px`,
+                }"
+              >
+                <button
+                  @click="startEditing(clickedAnnotation)"
+                  class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-blue-500 transition-colors"
+                  title="Edit"
+                >
+                  <UIcon name="i-heroicons-pencil" class="w-5 h-5" />
+                </button>
+                <button
+                  @click="deleteAnnotation(clickedAnnotation)"
+                  class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-red-500 transition-colors"
+                  title="Delete"
+                >
+                  <UIcon name="i-heroicons-trash" class="w-5 h-5" />
+                </button>
+                <button
+                  @click="toggleDragMode(clickedAnnotation)"
+                  class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors"
+                  title="Drag"
+                >
+                  <UIcon name="i-heroicons-arrows-pointing-out" class="w-5 h-5" />
+                </button>
+              </div>
+            </div>
           </div>
           
           <!-- Placeholder for other data types -->
-          <div v-else class="text-center">
-            <UIcon name="i-heroicons-document" class="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <p class="text-gray-600 dark:text-gray-400">
-              Data type: {{ parseDataType(taskData.dataType) }}
-            </p>
-            <p class="text-sm text-gray-500 dark:text-gray-500 mt-2">
-              Annotation interface for this data type will be implemented here.
-            </p>
+          <div v-else class="flex-1 flex items-center justify-center">
+            <div class="text-center">
+              <UIcon name="i-heroicons-document" class="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <p class="text-gray-600 dark:text-gray-400">
+                Data type: {{ parseDataType(taskData.dataType) }}
+              </p>
+              <p class="text-sm text-gray-500 dark:text-gray-500 mt-2">
+                Annotation interface for this data type will be implemented here.
+              </p>
+            </div>
           </div>
         </div>
         
@@ -280,6 +356,39 @@ const annotations = ref<Annotation[]>([])
 
 // Auth
 const token = useCookie('auth_token')
+
+// Canvas annotation interfaces
+interface CanvasAnnotation {
+  type: 'rectangle' | 'polygon'
+  startPoint?: { x: number; y: number }
+  width?: number
+  height?: number
+  points?: { x: number; y: number }[]
+}
+
+// Canvas refs and state
+const canvas = ref<HTMLCanvasElement | null>(null)
+const canvasContainer = ref<HTMLElement | null>(null)
+const ctx = ref<CanvasRenderingContext2D | null>(null)
+
+// Annotation tools state
+const tools = ['select', 'rectangle', 'polygon']
+const currentTool = ref('rectangle')
+const isAnnotating = ref(false)
+const startPoint = ref<{ x: number; y: number } | null>(null)
+const currentPath = ref<{ x: number; y: number }[]>([])
+const canvasAnnotations = ref<CanvasAnnotation[]>([])
+const mousePosition = ref({ x: 0, y: 0 })
+
+// Interaction state
+const hoveredAnnotation = ref<number | null>(null)
+const isDragging = ref(false)
+const dragStartPosition = ref<{ x: number; y: number } | null>(null)
+const selectedAnnotation = ref<number | null>(null)
+const clickedAnnotation = ref<number | null>(null)
+const annotationToolsPosition = ref({ x: 0, y: 0 })
+const hoveredPoint = ref<number | null>(null)
+const isOverAnnotation = ref(false)
 
 // Computed properties
 const isImageTask = computed(() => {
@@ -374,6 +483,341 @@ const formatDate = (timestamp: number) => {
   return new Date(timestamp * 1000).toLocaleString()
 }
 
+// Canvas annotation methods
+const initializeCanvas = () => {
+  if (!canvas.value || !taskData.value?.dataUrl) return
+  
+  ctx.value = canvas.value.getContext('2d')
+  
+  // Load image and set canvas size
+  const img = new Image()
+  img.crossOrigin = 'anonymous' // Handle cross-origin images
+  
+  img.onload = () => {
+    canvas.value!.width = img.width
+    canvas.value!.height = img.height
+    ctx.value!.drawImage(img, 0, 0)
+    drawExistingAnnotations()
+  }
+  
+  img.onerror = (error) => {
+    console.error('Failed to load image:', error)
+    console.log('Image URL:', taskData.value?.dataUrl)
+  }
+  
+  img.src = taskData.value.dataUrl
+}
+
+const selectTool = (tool: string) => {
+  if (isAnnotating.value) {
+    cancelAnnotation()
+  }
+  currentTool.value = tool
+}
+
+const getCanvasPoint = (event: MouseEvent): { x: number; y: number } => {
+  if (!canvas.value) return { x: 0, y: 0 }
+  const rect = canvas.value.getBoundingClientRect()
+  return {
+    x: event.clientX - rect.left,
+    y: event.clientY - rect.top
+  }
+}
+
+const handleClick = (event: MouseEvent) => {
+  const point = getCanvasPoint(event)
+  
+  if (currentTool.value === 'rectangle') {
+    if (!isAnnotating.value) {
+      startPoint.value = point
+      isAnnotating.value = true
+    } else {
+      completeRectangle(point)
+    }
+  } else if (currentTool.value === 'polygon') {
+    if (!isAnnotating.value) {
+      currentPath.value = [point]
+      isAnnotating.value = true
+    } else {
+      // Check if clicking near first point to close polygon
+      const firstPoint = currentPath.value[0]
+      const distance = Math.hypot(point.x - firstPoint.x, point.y - firstPoint.y)
+      
+      if (distance < 20 && currentPath.value.length > 2) {
+        completePolygon()
+      } else {
+        currentPath.value.push(point)
+      }
+    }
+  } else {
+    // Handle clicking annotations
+    const found = findAnnotationUnderPoint(point)
+    if (found !== null) {
+      clickedAnnotation.value = found
+      updateAnnotationToolsPosition(point)
+    } else {
+      clickedAnnotation.value = null
+    }
+  }
+}
+
+const handleDoubleClick = () => {
+  if (currentTool.value === 'polygon' && isAnnotating.value && currentPath.value.length > 2) {
+    completePolygon()
+  }
+}
+
+const handleMouseMove = (event: MouseEvent) => {
+  const point = getCanvasPoint(event)
+  mousePosition.value = point
+
+  if (isDragging.value && selectedAnnotation.value !== null) {
+    const dx = point.x - dragStartPosition.value!.x
+    const dy = point.y - dragStartPosition.value!.y
+    
+    const annotation = canvasAnnotations.value[selectedAnnotation.value]
+    if (annotation.type === 'rectangle' && annotation.startPoint) {
+      annotation.startPoint.x = annotation.startPoint.x + dx
+      annotation.startPoint.y = annotation.startPoint.y + dy
+    } else if (annotation.type === 'polygon' && annotation.points) {
+      annotation.points = annotation.points.map(p => ({
+        x: p.x + dx,
+        y: p.y + dy
+      }))
+    }
+    
+    dragStartPosition.value = point
+    redrawCanvas()
+  } else if (isAnnotating.value) {
+    redrawCanvas()
+  }
+}
+
+const handleMouseDown = (event: MouseEvent) => {
+  if (currentTool.value === 'select') {
+    const point = getCanvasPoint(event)
+    const found = findAnnotationUnderPoint(point)
+    if (found !== null) {
+      isDragging.value = true
+      selectedAnnotation.value = found
+      dragStartPosition.value = point
+      clickedAnnotation.value = null
+    }
+  }
+}
+
+const handleMouseUp = () => {
+  if (isDragging.value) {
+    isDragging.value = false
+    selectedAnnotation.value = null
+    dragStartPosition.value = null
+  }
+}
+
+const findAnnotationUnderPoint = (point: { x: number; y: number }): number | null => {
+  for (let i = canvasAnnotations.value.length - 1; i >= 0; i--) {
+    const annotation = canvasAnnotations.value[i]
+    if (isPointInAnnotation(point, annotation)) {
+      return i
+    }
+  }
+  return null
+}
+
+const isPointInAnnotation = (point: { x: number; y: number }, annotation: CanvasAnnotation): boolean => {
+  if (annotation.type === 'rectangle' && annotation.startPoint && annotation.width && annotation.height) {
+    const minX = Math.min(annotation.startPoint.x, annotation.startPoint.x + annotation.width)
+    const maxX = Math.max(annotation.startPoint.x, annotation.startPoint.x + annotation.width)
+    const minY = Math.min(annotation.startPoint.y, annotation.startPoint.y + annotation.height)
+    const maxY = Math.max(annotation.startPoint.y, annotation.startPoint.y + annotation.height)
+    
+    return point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY
+  } else if (annotation.type === 'polygon' && annotation.points) {
+    return isPointInPolygon(point, annotation.points)
+  }
+  return false
+}
+
+const isPointInPolygon = (point: { x: number; y: number }, points: { x: number; y: number }[]): boolean => {
+  let inside = false
+  for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+    const xi = points[i].x, yi = points[i].y
+    const xj = points[j].x, yj = points[j].y
+    
+    const intersect = ((yi > point.y) !== (yj > point.y))
+        && (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi)
+    if (intersect) inside = !inside
+  }
+  return inside
+}
+
+const updateAnnotationToolsPosition = (point: { x: number; y: number }) => {
+  if (!canvas.value) return
+  const rect = canvas.value.getBoundingClientRect()
+  annotationToolsPosition.value = {
+    x: point.x + rect.left - 60,
+    y: point.y + rect.top - 40
+  }
+}
+
+const completeRectangle = (endPoint: { x: number; y: number }) => {
+  if (!startPoint.value) return
+  
+  canvasAnnotations.value.push({
+    type: 'rectangle',
+    startPoint: { ...startPoint.value },
+    width: endPoint.x - startPoint.value.x,
+    height: endPoint.y - startPoint.value.y
+  })
+  
+  isAnnotating.value = false
+  startPoint.value = null
+  redrawCanvas()
+}
+
+const completePolygon = () => {
+  if (currentPath.value.length < 3) return
+  
+  canvasAnnotations.value.push({
+    type: 'polygon',
+    points: [...currentPath.value]
+  })
+  
+  isAnnotating.value = false
+  currentPath.value = []
+  redrawCanvas()
+}
+
+const completeAnnotation = () => {
+  if (!isAnnotating.value) return
+  
+  if (currentTool.value === 'rectangle' && startPoint.value) {
+    completeRectangle(mousePosition.value)
+  } else if (currentTool.value === 'polygon' && currentPath.value.length > 2) {
+    completePolygon()
+  }
+}
+
+const cancelAnnotation = () => {
+  isAnnotating.value = false
+  startPoint.value = null
+  currentPath.value = []
+  clickedAnnotation.value = null
+  redrawCanvas()
+}
+
+const deleteAnnotation = (index: number) => {
+  canvasAnnotations.value.splice(index, 1)
+  clickedAnnotation.value = null
+  redrawCanvas()
+}
+
+const startEditing = (index: number) => {
+  selectedAnnotation.value = index
+  const annotation = canvasAnnotations.value[index]
+  
+  if (annotation.type === 'rectangle' && annotation.startPoint) {
+    isAnnotating.value = true
+    currentTool.value = 'rectangle'
+    startPoint.value = { ...annotation.startPoint }
+  } else if (annotation.type === 'polygon' && annotation.points) {
+    isAnnotating.value = true
+    currentTool.value = 'polygon'
+    currentPath.value = [...annotation.points]
+  }
+  
+  canvasAnnotations.value.splice(index, 1)
+  clickedAnnotation.value = null
+}
+
+const toggleDragMode = (index: number) => {
+  isDragging.value = true
+  selectedAnnotation.value = index
+  dragStartPosition.value = mousePosition.value
+  clickedAnnotation.value = null
+}
+
+const redrawCanvas = () => {
+  if (!canvas.value || !ctx.value || !taskData.value?.dataUrl) return
+  
+  ctx.value.clearRect(0, 0, canvas.value.width, canvas.value.height)
+  
+  // Draw background image
+  const img = new Image()
+  img.onload = () => {
+    ctx.value!.drawImage(img, 0, 0)
+    drawExistingAnnotations()
+    drawCurrentAnnotation()
+  }
+  img.src = taskData.value.dataUrl
+}
+
+const drawExistingAnnotations = () => {
+  if (!ctx.value) return
+  
+  ctx.value.strokeStyle = '#00ff00'
+  ctx.value.lineWidth = 2
+
+  canvasAnnotations.value.forEach((annotation, index) => {
+    const isSelected = index === selectedAnnotation.value
+    
+    ctx.value!.beginPath()
+    if (annotation.type === 'rectangle' && annotation.startPoint && annotation.width && annotation.height) {
+      ctx.value!.strokeRect(
+        annotation.startPoint.x,
+        annotation.startPoint.y,
+        annotation.width,
+        annotation.height
+      )
+    } else if (annotation.type === 'polygon' && annotation.points) {
+      ctx.value!.moveTo(annotation.points[0].x, annotation.points[0].y)
+      annotation.points.forEach(point => {
+        ctx.value!.lineTo(point.x, point.y)
+      })
+      ctx.value!.closePath()
+    }
+    
+    ctx.value!.strokeStyle = isSelected ? '#ff0000' : '#00ff00'
+    ctx.value!.lineWidth = isSelected ? 3 : 2
+    ctx.value!.stroke()
+  })
+}
+
+const drawCurrentAnnotation = () => {
+  if (!ctx.value || !isAnnotating.value) return
+  
+  ctx.value.beginPath()
+  ctx.value.strokeStyle = '#ff0000'
+  ctx.value.lineWidth = 2
+
+  if (currentTool.value === 'rectangle' && startPoint.value) {
+    const width = mousePosition.value.x - startPoint.value.x
+    const height = mousePosition.value.y - startPoint.value.y
+    ctx.value.strokeRect(
+      startPoint.value.x,
+      startPoint.value.y,
+      width,
+      height
+    )
+  } else if (currentTool.value === 'polygon' && currentPath.value.length > 0) {
+    ctx.value.moveTo(currentPath.value[0].x, currentPath.value[0].y)
+    currentPath.value.forEach(point => {
+      ctx.value!.lineTo(point.x, point.y)
+    })
+    ctx.value.lineTo(mousePosition.value.x, mousePosition.value.y)
+    ctx.value.stroke()
+
+    // Draw points
+    currentPath.value.forEach((point, index) => {
+      ctx.value!.beginPath()
+      ctx.value!.fillStyle = index === 0 ? '#00ff00' : '#ffffff'
+      ctx.value!.arc(point.x, point.y, 4, 0, Math.PI * 2)
+      ctx.value!.fill()
+      ctx.value!.stroke()
+    })
+  }
+}
+
 const getStatusColor = (status: string) => {
   switch (status) {
     case 'unassigned':
@@ -405,8 +849,29 @@ definePageMeta({
   layout: false
 })
 
+// Watchers
+watch(taskData, (newTaskData) => {
+  if (newTaskData && isImageTask.value) {
+    nextTick(() => {
+      initializeCanvas()
+    })
+  }
+}, { immediate: true })
+
+// Keyboard event handler
+const handleKeyDown = (event: KeyboardEvent) => {
+  if (event.key === 'Escape') {
+    cancelAnnotation()
+  }
+}
+
 // Lifecycle
 onMounted(() => {
   loadData()
+  window.addEventListener('keydown', handleKeyDown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown)
 })
 </script>
