@@ -150,11 +150,23 @@
             <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No Tasks in Progress</h3>
             <p class="text-gray-500 dark:text-gray-400">No tasks are currently being annotated.</p>
           </div>          <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div v-for="task in tasks.annotating" :key="task.id" class="border border-green-500 p-4 rounded">
-              <h4>Task {{ task.id }}</h4>
-              <p>Status: {{ task.status }}</p>
-              <p>Type: {{ task.dataType }}</p>
-              <img v-if="task.dataType.includes('image')" :src="task.dataUrl" class="w-full h-32 object-cover mt-2" />
+            <div 
+              v-for="task in tasks.annotating" 
+              :key="task.id" 
+              class="border border-blue-500 p-4 rounded cursor-pointer transition-all hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+              @click="navigateToAnnotate(task.id)"
+            >
+              <div class="flex items-start justify-between mb-2">
+                <h4 class="font-medium">Task {{ task.id }}</h4>
+                <UIcon name="i-heroicons-arrow-top-right-on-square" class="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              </div>
+              <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">Status: {{ task.status }}</p>
+              <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Type: {{ task.dataType }}</p>
+              <img v-if="task.dataType.includes('image')" :src="task.dataUrl" class="w-full h-32 object-cover mt-2 rounded" />
+              <div class="mt-3 flex items-center text-sm text-blue-600 dark:text-blue-400">
+                <UIcon name="i-heroicons-pencil" class="w-4 h-4 mr-1" />
+                Click to continue annotation
+              </div>
             </div>
           </div>
         </div>
@@ -345,6 +357,11 @@ const handleContinueTask = (task: Task) => {
 const handleReviewTask = (task: Task) => {
   // TODO: Implement task review logic
   console.log('Review task:', task.id)
+}
+
+const navigateToAnnotate = (taskId: number) => {
+  const router = useRouter()
+  router.push(`/annotate/${taskId}`)
 }
 
 // Lifecycle
