@@ -18,7 +18,7 @@
     <!-- Error State -->
     <UAlert
       v-else-if="error"
-      color="red"
+      color="error"
       variant="subtle"
       :title="error"
       icon="i-heroicons-exclamation-triangle"
@@ -94,7 +94,7 @@
             </UButton>
             <UDropdown :items="getProjectActions(project)">
               <UButton 
-                color="gray" 
+                color="secondary" 
                 variant="ghost" 
                 icon="i-heroicons-ellipsis-vertical"
                 @click.stop
@@ -177,11 +177,11 @@ const fetchProjects = async () => {
   try {
     loading.value = true
     error.value = null
-    
-    const response = await fetch('http://localhost:8787/api/projects/all', {
+      const response = await fetch('http://localhost:8787/api/projects/all', {
       headers: {
         'Authorization': `Bearer ${token.value}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'orgId': props.organizationId.toString()
       }
     })
 
