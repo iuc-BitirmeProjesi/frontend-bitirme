@@ -18,7 +18,7 @@
     <!-- Error State -->
     <UAlert
       v-else-if="error"
-      color="red"
+      color="error"
       variant="subtle"
       :title="error"
       icon="i-heroicons-exclamation-triangle"
@@ -94,7 +94,7 @@
             </UButton>
             <UDropdown :items="getProjectActions(project)">
               <UButton 
-                color="gray" 
+                color="secondary" 
                 variant="ghost" 
                 icon="i-heroicons-ellipsis-vertical"
                 @click.stop
@@ -177,11 +177,11 @@ const fetchProjects = async () => {
   try {
     loading.value = true
     error.value = null
-    
-    const response = await fetch('http://localhost:8787/api/projects/all', {
+      const response = await fetch('http://localhost:8787/api/projects/all', {
       headers: {
         'Authorization': `Bearer ${token.value}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'orgId': props.organizationId.toString()
       }
     })
 
@@ -205,9 +205,9 @@ const fetchProjects = async () => {
 }
 
 const createProject = () => {
-  // Navigate to project creation page or open modal
+  // Navigate to project creation page
   console.log('Create project for organization:', props.organizationId)
-  // navigateTo(`/organizations/${props.organizationId}/projects/create`)
+  navigateTo(`/projects/create?organizationId=${props.organizationId}`)
 }
 
 const viewProject = (projectId: number) => {

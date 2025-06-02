@@ -12,7 +12,7 @@
     </div>    <!-- Invite User Modal -->
     <UModal v-model="showInviteModal">
       <UCard>
-        <div class="p-6">
+        <div class="p-6" @click.stop>
           <div class="flex items-center justify-between mb-6">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
               Invite Users to Organization
@@ -26,22 +26,95 @@
             />
           </div>
           
-          <OrganizationSearchUsers 
-            :org-id="String(organizationId)" 
-            @users-added="handleUsersAdded"
-            ref="searchUsersRef"
-          />
+          <!-- Search Users Form -->
+          <UForm :state="searchUserState" class="flex flex-col gap-4">
+            <UFormField label="Add Users to Your Organization" name="current" required>
+              <UInput 
+                v-model="searchUserState.finds" 
+                placeholder="Search User" 
+                required 
+                class="w-full"
+                @click.stop
+                @focus.stop
+              />
+            </UFormField>
+              <UTable 
+              v-if="foundUsers.length > 0" 
+              :data="foundUsers" 
+              :columns="userSearchColumns" 
+              ref="userSearchTable"
+              v-model:row-selection="rowSelection" 
+              @select="onSelectUser" 
+              @click.stop
+              :key="`table-key-${userSearchColumns.length}-${roleSelectOptions.length}-${existingUsers.length}`"
+            >              <!-- Role select slot -->
+              <template #role-cell="{ row }">
+                <div @click.stop>                  <USelect 
+                    :model-value="selectedRoles[row.original.id] ?? undefined"
+                    @update:model-value="(value) => selectedRoles[row.original.id] = value"
+                    :items="roleSelectOptions"
+                    placeholder="Select Role"
+                    class="min-w-[150px]"
+                    :loading="rolesLoading"
+                    :disabled="isUserInOrganization(row.original.id)"
+                    @focus="() => fetchRolesForSearch()"
+                    @click.stop
+                  />
+                </div>
+              </template>
+              <!-- Status column slot -->
+              <template #status-cell="{ row }">
+                <div @click.stop>
+                  <UBadge 
+                    v-if="isUserInOrganization(row.original.id)"
+                    color="primary"
+                    variant="subtle"
+                    size="sm"
+                  >
+                    Already in organization
+                  </UBadge>
+                  <UBadge 
+                    v-else
+                    color="secondary"
+                    variant="subtle"
+                    size="sm"
+                  >
+                    Available
+                  </UBadge>
+                </div>
+              </template>
+            </UTable>
+              <!-- Add Users button -->
+            <UButton 
+              v-if="foundUsers.length > 0 && Object.keys(rowSelection).some(key => rowSelection[key])"
+              label="Add Users" 
+              color="secondary" 
+              size="lg"
+              class="self-end cursor-pointer mt-4"
+              icon="i-heroicons-user-plus"
+              :disabled="!allSelectedUsersHaveRoles"
+              @click.stop="addUsersToOrganization"
+            />
+            
+            <!-- Helper message when button is disabled -->
+            <div 
+              v-if="foundUsers.length > 0 && Object.keys(rowSelection).some(key => rowSelection[key]) && !allSelectedUsersHaveRoles"
+              class="text-sm text-amber-600 mt-2 text-right"
+            >
+              Please assign roles to all selected users before adding them.
+            </div>
+          </UForm>
         </div>
       </UCard>
-    </UModal>
-
-    <!-- Search and Filters -->
+    </UModal><!-- Search and Filters -->
     <div class="flex flex-col sm:flex-row gap-4">
       <div class="flex-1">
         <UInput
           v-model="searchQuery"
           icon="i-heroicons-magnifying-glass"
           placeholder="Search users..."
+          @click.stop
+          @focus.stop
         />
       </div>
       <USelect
@@ -182,6 +255,11 @@
 </template>
 
 <script setup lang="ts">
+import { h, resolveComponent } from 'vue'
+import type { TableColumn, TableRow } from '@nuxt/ui'
+
+const UCheckbox = resolveComponent('UCheckbox')
+
 interface User {
   id: number
   name: string
@@ -193,13 +271,18 @@ interface User {
   joinedAt: number
 }
 
+interface SearchUser {
+  id: number
+  email: string
+}
+
 interface Props {
   organizationId: string | number
 }
 
 const props = defineProps<Props>()
 
-// Reactive state
+// Reactive state for existing functionality
 const users = ref<User[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -207,8 +290,21 @@ const searchQuery = ref('')
 const selectedRole = ref<string | null>(null)
 const showInviteModal = ref(false)
 
+// New reactive state for search users functionality
+const searchUserState = reactive({
+  finds: ''
+})
+const foundUsers = ref<SearchUser[]>([])
+const rolesLoading = ref(false)
+const roles = ref<{id: number, name: string}[]>([])
+const selectedRoles = reactive<Record<number, number | null>>({})
+const existingUsers = ref<number[]>([])
+const rowSelection = ref<Record<string, boolean>>({})
+const userSearchColumns = ref<TableColumn<SearchUser>[]>([])
+
 // Refs
 const searchUsersRef = ref()
+const userSearchTable = useTemplateRef('userSearchTable')
 
 // Token for API requests
 const token = useCookie('auth_token')
@@ -226,14 +322,18 @@ const roleOptions = [
 const filteredUsers = computed(() => {
   let filtered = users.value
 
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(user => 
-      user.name.toLowerCase().includes(query) ||
-      user.email.toLowerCase().includes(query)
-    )
+  // Filter by search query (name or email)
+  if (searchQuery.value && searchQuery.value.trim()) {
+    const query = searchQuery.value.toLowerCase().trim()
+    filtered = filtered.filter(user => {
+      // Safely check if name and email exist before calling toLowerCase
+      const nameMatch = user.name ? user.name.toLowerCase().includes(query) : false
+      const emailMatch = user.email ? user.email.toLowerCase().includes(query) : false
+      return nameMatch || emailMatch
+    })
   }
 
+  // Filter by selected role
   if (selectedRole.value) {
     filtered = filtered.filter(user => user.role === selectedRole.value)
   }
@@ -253,7 +353,28 @@ const adminUsers = computed(() =>
   users.value.filter(user => user.role === 'admin').length
 )
 
-// Methods
+// Search users computed properties
+const roleSelectOptions = computed(() =>
+  roles.value.map(role => ({
+    label: role.name,
+    value: role.id
+  }))
+)
+
+const allSelectedUsersHaveRoles = computed(() => {
+  const selectedRowIndices = Object.keys(rowSelection.value).filter(id => rowSelection.value[id])
+  const selectedUserIds = selectedRowIndices.map(rowIndex => {
+    const user = foundUsers.value[Number(rowIndex)]
+    return user ? user.id : null
+  }).filter((id): id is number => id !== null && !isUserInOrganization(id))
+  
+  return selectedUserIds.length > 0 && selectedUserIds.every(userId => {
+    const roleId = selectedRoles[userId]
+    return roleId !== null && roleId !== undefined
+  })
+})
+
+// Methods for existing functionality
 const fetchUsers = async () => {
   try {
     loading.value = true
@@ -280,6 +401,200 @@ const fetchUsers = async () => {
 
 const toggleInviteModal = () => {
   showInviteModal.value = !showInviteModal.value
+}
+
+// Search users methods
+const generateUserSearchColumns = (): TableColumn<SearchUser>[] => {
+  return [
+    {
+      id: 'select',
+      //@ts-ignore
+      header: ({ table }) =>
+        h(UCheckbox, {
+          modelValue: table.getIsSomePageRowsSelected()
+            ? 'indeterminate'
+            : table.getIsAllPageRowsSelected(),
+          'onUpdate:modelValue': (value: boolean | 'indeterminate') =>
+            table.toggleAllPageRowsSelected(!!value),
+          'aria-label': 'Select all'
+        }),
+      //@ts-ignore
+      cell: ({ row }) =>
+        h(UCheckbox, {
+          modelValue: row.getIsSelected(),
+          'onUpdate:modelValue': (value: boolean | 'indeterminate') =>
+            row.toggleSelected(!!value),
+          'aria-label': 'Select row',
+          disabled: isUserInOrganization(row.original.id)
+        })
+    },
+    {
+      accessorKey: 'id',
+      header: 'ID'
+    },
+    {
+      accessorKey: 'email',
+      header: 'Email'
+    },
+    {
+      id: 'role',
+      header: 'Role'
+    },
+    {
+      id: 'status',
+      header: 'Status'
+    }
+  ]
+}
+
+const fetchRolesForSearch = async (forceRefresh = false) => {
+  if (!forceRefresh && (roles.value.length > 0 || rolesLoading.value)) return
+  
+  rolesLoading.value = true
+  try {        
+    const res = await $fetch('http://localhost:8787/api/organizationRoles/all', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token.value}`,
+        "orgId": String(props.organizationId)
+      }
+    })
+    //@ts-ignore
+    roles.value = res.data.map((r) => ({
+      id: r.id,
+      name: r.name
+    }))
+  } catch (error) {
+    console.error('Error fetching roles:', error)
+  } finally {
+    rolesLoading.value = false
+  }
+}
+
+const fetchExistingUsers = async () => {
+  if (!props.organizationId) return
+  
+  try {        
+    const res = await $fetch('http://localhost:8787/api/organizationRelations/users', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token.value}`,
+        'orgId': String(props.organizationId)
+      }
+    })
+    
+    //@ts-ignore
+    existingUsers.value = res.data.map(user => user.id)
+    console.log('Existing organization users:', existingUsers.value)
+  } catch (error) {
+    console.error('Error fetching existing users:', error)
+  }
+}
+
+const isUserInOrganization = (userId: number): boolean => {
+  return existingUsers.value.includes(userId)
+}
+
+const onSelectUser = (row: TableRow<SearchUser>, e?: Event) => {
+  if (isUserInOrganization(row.original.id)) {
+    console.log('Cannot select user - already in organization:', row.original.id)
+    return
+  }
+  
+  row.toggleSelected(!row.getIsSelected())
+  console.log('onSelect called for user:', row.original.id)
+}
+
+let debounceTimeout: ReturnType<typeof setTimeout>
+const debouncedUserSearch = (query: string) => {
+  clearTimeout(debounceTimeout)
+
+  debounceTimeout = setTimeout(() => {
+    if (!query) return
+
+    $fetch('http://localhost:8787/api/users/search', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token.value}`,
+        word: query
+      }
+    })
+      .then((res) => {
+        console.log('Fetched users:', res)
+        //@ts-ignore
+        foundUsers.value = res.data
+      })
+      .catch((err) => {
+        console.error('Search error:', err)
+      })
+  }, 300)
+}
+
+const addUsersToOrganization = async () => {
+  const selectedRowIndices = Object.keys(rowSelection.value).filter(id => rowSelection.value[id])
+  const selectedUserIds = selectedRowIndices.map(rowIndex => {
+    const user = foundUsers.value[Number(rowIndex)]
+    return user ? user.id : null
+  }).filter((id): id is number => id !== null && !isUserInOrganization(id))
+  
+  if (selectedUserIds.length === 0) {
+    console.warn('No users selected')
+    return
+  }
+
+  const usersToAdd = selectedUserIds.map(userId => {
+    const roleId = selectedRoles[userId]
+    
+    if (!userId || !roleId) {
+      return null
+    }
+    
+    return {
+      roleId: Number(roleId),
+      userId: Number(userId)
+    }
+  }).filter((user): user is { roleId: number; userId: number } => 
+    user !== null && user?.roleId != null && user?.userId != null
+  )
+
+  if (usersToAdd.length === 0) {
+    console.warn('No users with assigned roles')
+    return
+  }
+
+  try {
+    const response = await $fetch('http://localhost:8787/api/organizationRelations/addUser', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token.value}`,
+        'orgId': String(props.organizationId)
+      },
+      body: usersToAdd
+    })
+    
+    console.log('API Response received:', response)
+    console.log('Users added successfully to API')
+
+    // Refresh the existing users list
+    await fetchExistingUsers()
+    await fetchUsers()
+    
+    // Reset selections
+    rowSelection.value = {}
+    for (const key of Object.keys(selectedRoles)) {
+      delete selectedRoles[Number(key)]
+    }
+    
+    // Close modal
+    showInviteModal.value = false
+    
+    console.log('Users added process completed')
+  } catch (error: unknown) {
+    console.error('Failed to add users:', error)
+  }
 }
 
 const handleUsersAdded = async (userDetails: { id: number; email: string; roleId: number }[]) => {
@@ -366,10 +681,49 @@ const formatLastActive = (timestamp: number) => {
 // Lifecycle
 onMounted(() => {
   fetchUsers()
+  userSearchColumns.value = generateUserSearchColumns()
+  fetchExistingUsers() // Fetch existing users when component mounts
 })
 
 // Watch for organization changes
 watch(() => props.organizationId, () => {
   fetchUsers()
+  if (props.organizationId) {
+    fetchExistingUsers()
+  }
 })
+
+// Watch the search input field for user search
+watch(() => searchUserState.finds, (newValue) => {
+  debouncedUserSearch(newValue)
+})
+
+// Watch rowSelection changes
+watch(rowSelection, (newSelection) => {
+  console.log('Row selection changed:', newSelection)
+}, { deep: true })
+
+// Watch existing users to remove them from selection if they get added
+watch(existingUsers, (newExistingUsers) => {
+  if (newExistingUsers.length > 0) {
+    // Remove any existing users from current selections
+    const currentSelection = { ...rowSelection.value }
+    let selectionChanged = false
+    
+    Object.keys(currentSelection).forEach(rowIndex => {
+      if (currentSelection[rowIndex]) {
+        const user = foundUsers.value[Number(rowIndex)]
+        if (user && isUserInOrganization(user.id)) {
+          delete currentSelection[rowIndex]
+          selectionChanged = true
+          console.log('Removed existing user from selection:', user.id)
+        }
+      }
+    })
+    
+    if (selectionChanged) {
+      rowSelection.value = currentSelection
+    }
+  }
+}, { deep: true })
 </script>

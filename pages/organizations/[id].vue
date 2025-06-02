@@ -93,12 +93,11 @@
           <OrganizationSectionsRolesSection 
             v-else-if="activeSection === 'roles'"
             :organization-id="organizationId"
-          />
-
-          <!-- Settings Section -->
+          />          <!-- Settings Section -->
           <OrganizationSectionsSettingsSection 
             v-else-if="activeSection === 'settings'"
             :organization="organization"
+            @refresh="refreshData"
           />
 
           <!-- Fallback Debug -->
@@ -144,7 +143,11 @@ const organizationId = computed(() => {
 const { isAuthenticated } = useAuth()
 
 // Use the global state for section management (shared with layout)
-const activeSection = useState('currentSection', () => 'overview')
+const activeSection = useState('currentSection', () => {
+  // Check if there's a section query parameter
+  const sectionFromQuery = route.query.section as string
+  return sectionFromQuery || 'overview'
+})
 
 // Reactive state
 const organization = ref<Organization | null>(null)
