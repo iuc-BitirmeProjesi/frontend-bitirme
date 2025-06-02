@@ -238,11 +238,17 @@
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Project Preview</h3>
           </template>
 
-          <div class="space-y-4">
-            <!-- Organization Info -->
+          <div class="space-y-4">            <!-- Organization Info -->
             <div class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
               <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                <div v-if="organizationLogo" class="flex-shrink-0">
+                  <img 
+                    :src="organizationLogo" 
+                    :alt="`${organizationName} logo`"
+                    class="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-gray-600"
+                  />
+                </div>
+                <div v-else class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
                   <UIcon name="i-heroicons-building-office" class="w-5 h-5 text-primary" />
                 </div>
                 <div>
@@ -330,6 +336,7 @@ const loading = ref(true)
 const creating = ref(false)
 const error = ref<string | null>(null)
 const organizationName = ref<string>('')
+const organizationLogo = ref<string>('')
 
 // Form state
 const projectForm = reactive({
@@ -385,9 +392,9 @@ const fetchOrganizationInfo = async () => {
     }
 
     const data = await response.json()
-    
-    if (data.data && data.data.length > 0) {
+      if (data.data && data.data.length > 0) {
       organizationName.value = data.data[0].organizations.name
+      organizationLogo.value = data.data[0].organizations.logo || ''
     } else {
       throw new Error('Organization not found')
     }
