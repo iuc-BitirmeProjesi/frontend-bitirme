@@ -883,7 +883,9 @@ const createProject = async () => {
 
   creating.value = true
   error.value = null
+  
   try {
+    // Step 1: Create the project
     const projectData = {
       organizationId: Number.parseInt(organizationId.value),
       name: projectForm.name,
@@ -894,7 +896,7 @@ const createProject = async () => {
       }
     }
 
-    const response = await fetch('http://localhost:8787/api/projects', {
+    const projectResponse = await fetch('http://localhost:8787/api/projects', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token.value}`,
@@ -903,19 +905,74 @@ const createProject = async () => {
       body: JSON.stringify(projectData)
     })
 
-    if (!response.ok) {
-      const errorData = await response.text()
-      throw new Error(`Failed to create project: ${response.statusText} - ${errorData}`)
+    if (!projectResponse.ok) {
+      const errorData = await projectResponse.text()
+      throw new Error(`Failed to create project: ${projectResponse.statusText} - ${errorData}`)
+    }    const projectResult = await projectResponse.json()
+    
+    // Extract project ID from response
+    const projectId = projectResult.data?.id
+
+    if (!projectId) {
+      throw new Error('Project created but no project ID returned')
     }
 
-    const result = await response.json()
-    
-    // Success! Navigate back to organization projects
-    toast.add({
-      title: 'Project Created',
-      description: `Project "${projectForm.name}" has been created successfully`,
-      color: 'success'
-    })
+    // Step 2: Upload files if any exist
+    if (uploadedFiles.value.length > 0) {
+      isUploading.value = true
+      uploadProgress.value = 0
+
+      try {
+        // Create FormData for file upload
+        const formData = new FormData()
+        uploadedFiles.value.forEach(file => {
+          formData.append('files', file)
+        })
+
+        const uploadResponse = await fetch('http://localhost:8787/api/bucket/uploadData', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token.value}`,
+            'projectId': projectId.toString()
+          },
+          body: formData
+        })
+
+        if (!uploadResponse.ok) {
+          const uploadErrorData = await uploadResponse.text()
+          console.warn(`File upload failed: ${uploadResponse.statusText} - ${uploadErrorData}`)
+          
+          toast.add({
+            title: 'Project Created with Warning',
+            description: `Project "${projectForm.name}" was created successfully, but file upload failed. You can upload files later.`,
+            color: 'warning'
+          })
+        } else {
+          toast.add({
+            title: 'Project Created Successfully',
+            description: `Project "${projectForm.name}" and ${uploadedFiles.value.length} file(s) uploaded successfully`,
+            color: 'success'
+          })
+        }
+      } catch (uploadErr) {
+        console.warn('File upload error:', uploadErr)
+        toast.add({
+          title: 'Project Created with Warning',
+          description: `Project "${projectForm.name}" was created successfully, but file upload failed. You can upload files later.`,
+          color: 'warning'
+        })
+      } finally {
+        isUploading.value = false
+        uploadProgress.value = 0
+      }
+    } else {
+      // No files to upload
+      toast.add({
+        title: 'Project Created',
+        description: `Project "${projectForm.name}" has been created successfully`,
+        color: 'success'
+      })
+    }
 
     // Navigate back to organization page
     await navigateTo(`/organizations/${organizationId.value}?section=projects`)
@@ -925,6 +982,8 @@ const createProject = async () => {
     console.error('Error creating project:', err)
   } finally {
     creating.value = false
+    isUploading.value = false
+    uploadProgress.value = 0
   }
 }
 
