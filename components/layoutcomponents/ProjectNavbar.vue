@@ -68,6 +68,19 @@
                         <UIcon name="i-heroicons-academic-cap" class="w-4 h-4 mr-3" />
                         Classes
                     </button>
+
+                    <button
+                        @click="handleNavClick('annotate')"
+                        :class="[
+                            'w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
+                            activeSection === 'annotate'
+                                ? 'bg-primary text-white'
+                                : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
+                        ]"
+                    >
+                        <UIcon name="i-heroicons-pencil-square" class="w-4 h-4 mr-3" />
+                        Annotate
+                    </button>
                 </div>
             </div>
 
