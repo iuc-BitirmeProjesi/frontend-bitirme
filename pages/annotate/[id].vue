@@ -370,6 +370,7 @@ interface CanvasAnnotation {
 const canvas = ref<HTMLCanvasElement | null>(null)
 const canvasContainer = ref<HTMLElement | null>(null)
 const ctx = ref<CanvasRenderingContext2D | null>(null)
+const backgroundImage = ref<HTMLImageElement | null>(null)
 
 // Annotation tools state
 const tools = ['select', 'rectangle', 'polygon']
@@ -496,6 +497,7 @@ const initializeCanvas = () => {
   img.onload = () => {
     canvas.value!.width = img.width
     canvas.value!.height = img.height
+    backgroundImage.value = img // Cache the image
     ctx.value!.drawImage(img, 0, 0)
     drawExistingAnnotations()
   }
@@ -570,6 +572,8 @@ const handleDoubleClick = () => {
 const handleMouseMove = (event: MouseEvent) => {
   const point = getCanvasPoint(event)
   mousePosition.value = point
+  
+  let shouldRedraw = false
 
   if (isDragging.value && selectedAnnotation.value !== null) {
     const dx = point.x - dragStartPosition.value!.x
@@ -587,8 +591,12 @@ const handleMouseMove = (event: MouseEvent) => {
     }
     
     dragStartPosition.value = point
-    redrawCanvas()
+    shouldRedraw = true
   } else if (isAnnotating.value) {
+    shouldRedraw = true
+  }
+  
+  if (shouldRedraw) {
     redrawCanvas()
   }
 }
@@ -738,18 +746,17 @@ const toggleDragMode = (index: number) => {
 }
 
 const redrawCanvas = () => {
-  if (!canvas.value || !ctx.value || !taskData.value?.dataUrl) return
+  if (!canvas.value || !ctx.value || !backgroundImage.value) return
   
+  // Clear canvas
   ctx.value.clearRect(0, 0, canvas.value.width, canvas.value.height)
   
-  // Draw background image
-  const img = new Image()
-  img.onload = () => {
-    ctx.value!.drawImage(img, 0, 0)
-    drawExistingAnnotations()
-    drawCurrentAnnotation()
-  }
-  img.src = taskData.value.dataUrl
+  // Draw cached background image immediately
+  ctx.value.drawImage(backgroundImage.value, 0, 0)
+  
+  // Draw annotations
+  drawExistingAnnotations()
+  drawCurrentAnnotation()
 }
 
 const drawExistingAnnotations = () => {
