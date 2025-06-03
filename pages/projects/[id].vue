@@ -43,10 +43,14 @@
 
       <!-- Settings Section -->
       <div v-else-if="currentSection === 'settings'" class="p-6">
-        <ProjectSectionsProjectSettingsSection :project-id="projectId" />
-      </div>      <!-- Classes Section -->
+        <ProjectSectionsProjectSettingsSection :project-id="projectId" />      </div>      <!-- Classes Section -->
       <div v-else-if="currentSection === 'classes'" class="p-6">
         <ProjectSectionsProjectClassesSection :project-id="projectId" />
+      </div>
+
+      <!-- Upload Data Section -->
+      <div v-else-if="currentSection === 'upload-data'" class="p-6">
+        <ProjectSectionsProjectUploadDataSection :project-id="projectId" />
       </div>
 
       <!-- Annotation Section -->
