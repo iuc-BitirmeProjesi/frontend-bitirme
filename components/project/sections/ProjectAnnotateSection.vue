@@ -11,13 +11,22 @@
         </p>
       </div>      <div class="flex items-center gap-4">
         <UButton 
-          v-if="selectedTasks.length > 0" 
+          v-if="selectedUnassignedTasks.length > 0" 
           @click="assignSelectedTasks" 
           :loading="assignLoading"
           color="primary"
         >
           <UIcon name="i-heroicons-user-plus" class="w-4 h-4 mr-2" />
-          Assign ({{ selectedTasks.length }})
+          Assign ({{ selectedUnassignedTasks.length }})
+        </UButton>
+        <UButton 
+          v-if="selectedAnnotatingTasks.length > 0" 
+          @click="completeSelectedTasks" 
+          :loading="completeLoading"
+          color="success"
+        >
+          <UIcon name="i-heroicons-check-circle" class="w-4 h-4 mr-2" />
+          Complete ({{ selectedAnnotatingTasks.length }})
         </UButton>
         <UButton @click="refreshTasks" :loading="loading" variant="outline">
           <UIcon name="i-heroicons-arrow-path" class="w-4 h-4 mr-2" />
@@ -124,17 +133,17 @@
               :key="task.id" 
               :class="[
                 'border p-4 rounded cursor-pointer transition-all',
-                selectedTasks.includes(task.id) 
+                selectedUnassignedTasks.includes(task.id) 
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
                   : 'border-gray-300 hover:border-blue-300'
               ]"
-              @click="toggleTaskSelection(task.id)"
+              @click="toggleUnassignedTaskSelection(task.id)"
             >
               <div class="flex items-start justify-between mb-2">
                 <h4 class="font-medium">Task {{ task.id }}</h4>
                 <UCheckbox 
-                  :model-value="selectedTasks.includes(task.id)"
-                  @change="toggleTaskSelection(task.id)"
+                  :model-value="selectedUnassignedTasks.includes(task.id)"
+                  @change="toggleUnassignedTaskSelection(task.id)"
                   @click.stop
                 />
               </div>
@@ -153,19 +162,42 @@
             <div 
               v-for="task in tasks.annotating" 
               :key="task.id" 
-              class="border border-blue-500 p-4 rounded cursor-pointer transition-all hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-              @click="navigateToAnnotate(task.id)"
+              :class="[
+                'border p-4 rounded cursor-pointer transition-all relative',
+                selectedAnnotatingTasks.includes(task.id)
+                  ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                  : 'border-blue-500 hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+              ]"
+              @click="toggleAnnotatingTaskSelection(task.id)"
             >
               <div class="flex items-start justify-between mb-2">
                 <h4 class="font-medium">Task {{ task.id }}</h4>
-                <UIcon name="i-heroicons-arrow-top-right-on-square" class="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <div class="flex items-center gap-2">
+                  <UCheckbox 
+                    :model-value="selectedAnnotatingTasks.includes(task.id)"
+                    @change="toggleAnnotatingTaskSelection(task.id)"
+                    @click.stop
+                  />
+                  <UButton
+                    @click.stop="navigateToAnnotate(task.id)"
+                    size="xs"
+                    variant="ghost"
+                    color="secondary"
+                  >
+                    <UIcon name="i-heroicons-arrow-top-right-on-square" class="w-4 h-4" />
+                  </UButton>
+                </div>
               </div>
               <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">Status: {{ task.status }}</p>
               <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Type: {{ task.dataType }}</p>
               <img v-if="task.dataType.includes('image')" :src="task.dataUrl" class="w-full h-32 object-cover mt-2 rounded" />
-              <div class="mt-3 flex items-center text-sm text-blue-600 dark:text-blue-400">
+              <div v-if="!selectedAnnotatingTasks.includes(task.id)" class="mt-3 flex items-center text-sm text-blue-600 dark:text-blue-400">
                 <UIcon name="i-heroicons-pencil" class="w-4 h-4 mr-1" />
-                Click to continue annotation
+                Click to select or continue annotation
+              </div>
+              <div v-else class="mt-3 flex items-center text-sm text-green-600 dark:text-green-400">
+                <UIcon name="i-heroicons-check-circle" class="w-4 h-4 mr-1" />
+                Selected for completion
               </div>
             </div>
           </div>
@@ -225,8 +257,10 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const tasks = ref<TasksResponse['data'] | null>(null)
 const activeTab = ref<'unassigned' | 'annotating' | 'completed'>('unassigned')
-const selectedTasks = ref<number[]>([])
+const selectedUnassignedTasks = ref<number[]>([])
+const selectedAnnotatingTasks = ref<number[]>([])
 const assignLoading = ref(false)
+const completeLoading = ref(false)
 
 // Tab configuration
 const tabs = [
@@ -256,6 +290,7 @@ const getTaskCount = (tabKey: string) => {
 // Auth
 const { isAuthenticated } = useAuth()
 const token = useCookie('auth_token')
+const toast = useToast()
 
 // Methods
 const fetchTasks = async () => {
@@ -293,17 +328,26 @@ const refreshTasks = () => {
 }
 
 // Task selection methods
-const toggleTaskSelection = (taskId: number) => {
-  const index = selectedTasks.value.indexOf(taskId)
+const toggleUnassignedTaskSelection = (taskId: number) => {
+  const index = selectedUnassignedTasks.value.indexOf(taskId)
   if (index > -1) {
-    selectedTasks.value.splice(index, 1)
+    selectedUnassignedTasks.value.splice(index, 1)
   } else {
-    selectedTasks.value.push(taskId)
+    selectedUnassignedTasks.value.push(taskId)
+  }
+}
+
+const toggleAnnotatingTaskSelection = (taskId: number) => {
+  const index = selectedAnnotatingTasks.value.indexOf(taskId)
+  if (index > -1) {
+    selectedAnnotatingTasks.value.splice(index, 1)
+  } else {
+    selectedAnnotatingTasks.value.push(taskId)
   }
 }
 
 const assignSelectedTasks = async () => {
-  if (selectedTasks.value.length === 0) return
+  if (selectedUnassignedTasks.value.length === 0) return
   
   try {
     assignLoading.value = true
@@ -319,22 +363,83 @@ const assignSelectedTasks = async () => {
         'Content-Type': 'application/json'
       },
       body: {
-        taskId: selectedTasks.value,
+        taskId: selectedUnassignedTasks.value,
         status: 'annotating'
       }
     })
+      console.log('Tasks assigned successfully:', response)
     
-    console.log('Tasks assigned successfully:', response)
+    // Show success toast
+    toast.add({
+      title: 'Tasks Assigned',
+      description: `${selectedUnassignedTasks.value.length} task(s) assigned successfully`,
+      color: 'success'
+    })
     
     // Clear selection and refresh tasks
-    selectedTasks.value = []
+    selectedUnassignedTasks.value = []
     await fetchTasks()
-    
-  } catch (err) {
+      } catch (err) {
     console.error('Error assigning tasks:', err)
-    error.value = err instanceof Error ? err.message : 'Failed to assign tasks'
+    const errorMessage = err instanceof Error ? err.message : 'Failed to assign tasks'
+    error.value = errorMessage
+    
+    // Show error toast
+    toast.add({
+      title: 'Assignment Failed',
+      description: errorMessage,
+      color: 'error'
+    })
   } finally {
     assignLoading.value = false
+  }
+}
+
+const completeSelectedTasks = async () => {
+  if (selectedAnnotatingTasks.value.length === 0) return
+  
+  try {
+    completeLoading.value = true
+    
+    if (!token.value) {
+      throw new Error('Authentication required')
+    }
+    
+    const response = await $fetch('http://localhost:8787/api/tasks/complete', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token.value}`,
+        'Content-Type': 'application/json'
+      },
+      body: {
+        taskIds: selectedAnnotatingTasks.value
+      }
+    })
+      console.log('Tasks completed successfully:', response)
+    
+    // Show success toast
+    toast.add({
+      title: 'Tasks Completed',
+      description: `${selectedAnnotatingTasks.value.length} task(s) completed successfully`,
+      color: 'success'
+    })
+    
+    // Clear selection and refresh tasks
+    selectedAnnotatingTasks.value = []
+    await fetchTasks()
+      } catch (err) {
+    console.error('Error completing tasks:', err)
+    const errorMessage = err instanceof Error ? err.message : 'Failed to complete tasks'
+    error.value = errorMessage
+    
+    // Show error toast
+    toast.add({
+      title: 'Completion Failed',
+      description: errorMessage,
+      color: 'error'
+    })
+  } finally {
+    completeLoading.value = false
   }
 }
 
@@ -372,6 +477,9 @@ onMounted(() => {
 // Watch for project ID changes
 watch(() => props.projectId, () => {
   if (props.projectId) {
+    // Clear selections when switching projects
+    selectedUnassignedTasks.value = []
+    selectedAnnotatingTasks.value = []
     fetchTasks()
   }
 }, { immediate: true })

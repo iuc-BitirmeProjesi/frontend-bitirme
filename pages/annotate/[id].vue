@@ -38,10 +38,54 @@
             <p class="text-red-800 dark:text-red-300 text-sm">{{ error }}</p>
           </div>
         </div>
-      </div>
-
-      <!-- Content -->
+      </div>      <!-- Content -->
       <div v-else class="space-y-6 p-6">
+        <!-- Project Details Section -->
+        <div v-if="projectData">
+          <h2 class="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center">
+            <UIcon name="i-heroicons-folder" class="w-5 h-5 mr-2" />
+            Project Details
+          </h2>
+          
+          <div class="space-y-3">
+            <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+              <div class="space-y-3">
+                <div>
+                  <label class="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide">Project Name</label>
+                  <p class="mt-1 text-sm font-semibold text-blue-900 dark:text-blue-200">{{ projectData.name }}</p>
+                </div>
+                
+                <div v-if="projectData.description">
+                  <label class="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide">Description</label>
+                  <p class="mt-1 text-sm text-blue-800 dark:text-blue-300">{{ projectData.description }}</p>
+                </div>
+                
+                <div>
+                  <label class="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide">Project Type</label>
+                  <p class="mt-1">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300">
+                      {{ getProjectTypeName(projectData.projectType) }}
+                    </span>
+                  </p>
+                </div>
+                
+                <div v-if="projectData.labelConfig?.classes?.length">
+                  <label class="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide">Classes ({{ projectData.labelConfig.classes.length }})</label>
+                  <div class="mt-2 flex flex-wrap gap-1">
+                    <span 
+                      v-for="(className, index) in projectData.labelConfig.classes" 
+                      :key="index"
+                      class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-600"
+                    >
+                      {{ className }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Attributes Section -->
         <div v-if="taskData">
           <h2 class="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center">
@@ -344,6 +388,26 @@ interface TaskData {
   nextTaskId: number | null
 }
 
+interface ProjectData {
+  id: number
+  organizationId: number
+  name: string
+  description: string
+  projectType: number
+  labelConfig: {
+    classes: string[]
+  }
+  createdAt: number
+  updatedAt: number
+}
+
+interface ProjectResponse {
+  data: {
+    projects: ProjectData
+    project_relations: any
+  }
+}
+
 interface Annotation {
   id: number
   taskId: number
@@ -374,6 +438,7 @@ const taskId = route.params.id as string
 const loading = ref(true)
 const error = ref<string | null>(null)
 const taskData = ref<TaskData | null>(null)
+const projectData = ref<ProjectData | null>(null)
 const annotations = ref<Annotation[]>([])
 const savingAnnotation = ref(false)
 const savingAndNext = ref(false)
@@ -384,11 +449,13 @@ const token = useCookie('auth_token')
 
 // Canvas annotation interfaces
 interface CanvasAnnotation {
-  type: 'rectangle' | 'polygon'
+  type: 'rectangle' | 'polygon' | 'dot'
   startPoint?: { x: number; y: number }
   width?: number
   height?: number
   points?: { x: number; y: number }[]
+  center?: { x: number; y: number }
+  radius?: number
 }
 
 // Canvas refs and state
@@ -398,7 +465,7 @@ const ctx = ref<CanvasRenderingContext2D | null>(null)
 const backgroundImage = ref<HTMLImageElement | null>(null)
 
 // Annotation tools state
-const tools = ['select', 'rectangle', 'polygon']
+const tools = ['select', 'rectangle', 'polygon', 'dots']
 const currentTool = ref('rectangle')
 const isAnnotating = ref(false)
 const startPoint = ref<{ x: number; y: number } | null>(null)
@@ -471,14 +538,42 @@ const fetchAnnotations = async () => {
   }
 }
 
+const fetchProjectData = async () => {
+  try {
+    if (!token.value || !taskData.value?.projectId) {
+      throw new Error('Authentication required or no project ID')
+    }
+
+    const response = await $fetch<ProjectResponse>(`http://localhost:8787/api/projects/${taskData.value.projectId}`, {
+      headers: {
+        'Authorization': `Bearer ${token.value}`,
+        'Content-Type': 'application/json'
+      }
+    })
+
+    if (response.data?.projects) {
+      projectData.value = response.data.projects
+    } else {
+      throw new Error('Project not found')
+    }
+  } catch (err) {
+    console.error('Error fetching project data:', err)
+    // Don't throw error for project data, just log it
+    projectData.value = null
+  }
+}
+
 const loadData = async () => {
   try {
     loading.value = true
     error.value = null
     
-    // Fetch both task data and annotations
+    // First fetch task data
+    await fetchTaskData()
+    
+    // Then fetch project data and annotations in parallel
     await Promise.all([
-      fetchTaskData(),
+      fetchProjectData(),
       fetchAnnotations()
     ])
     
@@ -519,6 +614,15 @@ const parseDataType = (dataType: string) => {
 
 const formatDate = (timestamp: number) => {
   return new Date(timestamp * 1000).toLocaleString()
+}
+
+const getProjectTypeName = (type: number) => {
+  switch (type) {
+    case 1: return 'Classification'
+    case 2: return 'Object Detection'
+    case 3: return 'Data Analysis'
+    default: return 'Unknown'
+  }
 }
 
 // Canvas annotation methods
@@ -588,6 +692,14 @@ const handleClick = (event: MouseEvent) => {
         currentPath.value.push(point)
       }
     }
+  } else if (currentTool.value === 'dots') {
+    // Create dot annotation immediately on click
+    canvasAnnotations.value.push({
+      type: 'dot',
+      center: point,
+      radius: 5 // Default radius
+    })
+    redrawCanvas()
   } else {
     // Handle clicking annotations
     const found = findAnnotationUnderPoint(point)
@@ -611,7 +723,6 @@ const handleMouseMove = (event: MouseEvent) => {
   mousePosition.value = point
   
   let shouldRedraw = false
-
   if (isDragging.value && selectedAnnotation.value !== null) {
     const dx = point.x - dragStartPosition.value!.x
     const dy = point.y - dragStartPosition.value!.y
@@ -625,6 +736,9 @@ const handleMouseMove = (event: MouseEvent) => {
         x: p.x + dx,
         y: p.y + dy
       }))
+    } else if (annotation.type === 'dot' && annotation.center) {
+      annotation.center.x = annotation.center.x + dx
+      annotation.center.y = annotation.center.y + dy
     }
     
     dragStartPosition.value = point
@@ -679,6 +793,9 @@ const isPointInAnnotation = (point: { x: number; y: number }, annotation: Canvas
     return point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY
   } else if (annotation.type === 'polygon' && annotation.points) {
     return isPointInPolygon(point, annotation.points)
+  } else if (annotation.type === 'dot' && annotation.center && annotation.radius) {
+    const distance = Math.hypot(point.x - annotation.center.x, point.y - annotation.center.y)
+    return distance <= annotation.radius
   }
   return false
 }
@@ -769,6 +886,13 @@ const startEditing = (index: number) => {
     isAnnotating.value = true
     currentTool.value = 'polygon'
     currentPath.value = [...annotation.points]
+  } else if (annotation.type === 'dot' && annotation.center) {
+    // For dots, we can just enable drag mode instead of editing mode
+    isDragging.value = true
+    selectedAnnotation.value = index
+    dragStartPosition.value = mousePosition.value
+    clickedAnnotation.value = null
+    return
   }
   
   canvasAnnotations.value.splice(index, 1)
@@ -801,7 +925,6 @@ const drawExistingAnnotations = () => {
   
   ctx.value.strokeStyle = '#00ff00'
   ctx.value.lineWidth = 2
-
   canvasAnnotations.value.forEach((annotation, index) => {
     const isSelected = index === selectedAnnotation.value
     
@@ -819,6 +942,10 @@ const drawExistingAnnotations = () => {
         ctx.value!.lineTo(point.x, point.y)
       })
       ctx.value!.closePath()
+    } else if (annotation.type === 'dot' && annotation.center && annotation.radius) {
+      ctx.value!.arc(annotation.center.x, annotation.center.y, annotation.radius, 0, 2 * Math.PI)
+      ctx.value!.fillStyle = isSelected ? 'rgba(255, 0, 0, 0.3)' : 'rgba(0, 255, 0, 0.3)'
+      ctx.value!.fill()
     }
     
     ctx.value!.strokeStyle = isSelected ? '#ff0000' : '#00ff00'
