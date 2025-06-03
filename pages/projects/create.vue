@@ -638,7 +638,11 @@ const getProjectTypeIcon = (type: number) => {
 const addClass = () => {
   const input = newClassName.value.trim()
   
+  console.log('addClass called with input:', input)
+  console.log('Current classes before adding:', projectForm.classes)
+  
   if (!input) {
+    console.log('Input is empty, returning')
     return
   }
   
@@ -648,7 +652,10 @@ const addClass = () => {
     .map(name => name.trim())
     .filter(name => name.length > 0)
   
+  console.log('Processed class names:', classNames)
+  
   if (classNames.length === 0) {
+    console.log('No valid class names, returning')
     return
   }
   
@@ -664,6 +671,10 @@ const addClass = () => {
       addedClasses.push(className)
     }
   })
+  
+  console.log('Classes after adding:', projectForm.classes)
+  console.log('Added classes:', addedClasses)
+  console.log('Duplicate classes:', duplicateClasses)
   
   // Clear the input
   newClassName.value = ''
@@ -883,9 +894,7 @@ const createProject = async () => {
 
   creating.value = true
   error.value = null
-  
-  try {
-    // Step 1: Create the project
+    try {    // Step 1: Create the project
     const projectData = {
       organizationId: Number.parseInt(organizationId.value),
       name: projectForm.name,
@@ -893,8 +902,15 @@ const createProject = async () => {
       projectType: projectForm.projectType,
       labelConfig: {
         classes: projectForm.classes
-      }
+      },
+      // Also try sending classes directly in case API expects it differently
+      classes: projectForm.classes
     }
+
+    // Debug logging
+    console.log('Project data being sent:', projectData)
+    console.log('Classes array:', projectForm.classes)
+    console.log('Classes length:', projectForm.classes.length)
 
     const projectResponse = await fetch('http://localhost:8787/api/projects', {
       method: 'POST',
