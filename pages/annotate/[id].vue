@@ -52,16 +52,7 @@
           <div class="space-y-3">
             <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
               <div class="space-y-3">
-                <div>
-                  <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Task ID</label>
-                  <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ taskData.id }}</p>
-                </div>
-                
-                <div>
-                  <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Project ID</label>
-                  <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ taskData.projectId }}</p>
-                </div>
-                
+
                 <div>
                   <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</label>
                   <p class="mt-1">
@@ -86,11 +77,11 @@
                   <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Created At</label>
                   <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ formatDate(taskData.createdAt) }}</p>
                 </div>
-                
-                <div>
+                  <div>
                   <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Updated At</label>
                   <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ formatDate(taskData.updatedAt) }}</p>
                 </div>
+                
               </div>
             </div>
 
@@ -130,9 +121,7 @@
             <UIcon name="i-heroicons-document-plus" class="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-2">No Annotations</h3>
             <p class="text-xs text-gray-500 dark:text-gray-400">Start annotating to see your work here.</p>
-          </div>
-
-          <!-- Annotations list -->
+          </div>          <!-- Annotations list -->
           <div v-else class="space-y-4">
             <div v-for="annotation in annotations" :key="annotation.id" 
                  class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
@@ -146,6 +135,14 @@
                     {{ annotation.reviewStatus }}
                   </span>
                 </div>
+                <UButton 
+                  size="xs" 
+                  color="primary" 
+                  @click="applyAnnotation(annotation)"
+                  :disabled="!isImageTask"
+                >
+                  Apply
+                </UButton>
               </div>
               
               <div class="space-y-2 text-xs">
@@ -176,25 +173,39 @@
     </div>
 
     <!-- Main Content Area -->
-    <div class="flex-1 flex flex-col">
-      <!-- Header -->
+    <div class="flex-1 flex flex-col">      <!-- Header -->
       <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
         <div class="flex items-center justify-between">
           <h2 class="text-lg font-medium text-gray-900 dark:text-white">
             Annotation Workspace
           </h2>
           <div class="flex items-center space-x-4">
-            <UButton variant="outline" size="sm">
+            <UButton variant="outline" size="sm" @click="loadData">
               <UIcon name="i-heroicons-arrow-path" class="w-4 h-4 mr-2" />
               Refresh
             </UButton>
-            <UButton color="primary" size="sm">
+            <UButton 
+              color="primary" 
+              size="sm" 
+              @click="saveAnnotation"
+              :loading="savingAnnotation"
+              :disabled="canvasAnnotations.length === 0"
+            >
               <UIcon name="i-heroicons-check" class="w-4 h-4 mr-2" />
               Save Annotation
+            </UButton>            <UButton 
+              v-if="taskData?.nextTaskId"
+              color="success" 
+              size="sm" 
+              @click="saveAndNext"
+              :loading="savingAndNext"
+            >
+              <UIcon name="i-heroicons-arrow-right" class="w-4 h-4 mr-2" />
+              Next
             </UButton>
           </div>
         </div>
-      </div>      <!-- Content Area -->
+      </div><!-- Content Area -->
       <div class="flex-1 p-6 overflow-auto">
         <div v-if="taskData" class="h-full flex flex-col">
           <!-- Annotation Tools -->
@@ -320,6 +331,7 @@ interface TaskData {
   priority: number
   createdAt: number
   updatedAt: number
+  nextTaskId: number | null
 }
 
 interface Annotation {
@@ -353,6 +365,8 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 const taskData = ref<TaskData | null>(null)
 const annotations = ref<Annotation[]>([])
+const savingAnnotation = ref(false)
+const savingAndNext = ref(false)
 
 // Auth
 const token = useCookie('auth_token')
@@ -456,6 +470,18 @@ const loadData = async () => {
       fetchTaskData(),
       fetchAnnotations()
     ])
+    
+    // Auto-load first annotation if available and it's an image task
+    nextTick(() => {
+      if (annotations.value.length > 0 && isImageTask.value) {
+        // Wait for canvas to be initialized before applying annotation
+        setTimeout(() => {
+          if (canvas.value && ctx.value) {
+            applyAnnotation(annotations.value[0])
+          }
+        }, 500) // Small delay to ensure canvas is ready
+      }
+    })
     
   } catch (err) {
     console.error('Error loading data:', err)
@@ -881,4 +907,191 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown)
 })
+
+const saveAnnotation = async () => {
+  if (!taskData.value || canvasAnnotations.value.length === 0) {
+    console.warn('No annotations to save')
+    return
+  }
+
+  try {
+    savingAnnotation.value = true
+    
+    if (!token.value) {
+      throw new Error('Authentication required')
+    }    const annotationData = {
+      annotations: canvasAnnotations.value.map(annotation => ({
+        ...annotation
+      }))
+    }
+
+    await $fetch(`http://localhost:8787/api/annotations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token.value}`
+      },
+      body: {
+        taskId: parseInt(taskId),
+        projectId: taskData.value.projectId,
+        annotationData
+      }
+    })
+
+    // Refresh annotations after saving
+    await fetchAnnotations()
+    
+    // Show success message or notification here if needed
+    console.log('Annotation saved successfully')
+    
+  } catch (err) {
+    console.error('Error saving annotation:', err)
+    // Handle error - show notification or error message
+    throw err
+  } finally {
+    savingAnnotation.value = false
+  }
+}
+
+const saveAndNext = async () => {
+  if (!taskData.value?.nextTaskId) {
+    console.warn('No next task available')
+    return
+  }
+
+  try {
+    savingAndNext.value = true
+    
+    // Save annotation only if there are annotations to save
+    if (canvasAnnotations.value.length > 0) {
+      await saveAnnotation()
+    }
+    
+    // Navigate to the next task
+    const router = useRouter()
+    router.push(`/annotate/${taskData.value.nextTaskId}`)
+    
+  } catch (err) {
+    console.error('Error saving annotation and moving to next task:', err)
+    // Handle error - show notification or error message
+  } finally {
+    savingAndNext.value = false
+  }
+}
+
+const applyAnnotation = (annotation: Annotation) => {
+  if (!isImageTask.value || !canvas.value || !ctx.value) {
+    console.warn('Cannot apply annotation: not an image task or canvas not ready')
+    return
+  }
+
+  try {
+    // Clear current canvas annotations
+    canvasAnnotations.value = []
+    
+    // Convert API annotation data to canvas format
+    const convertedAnnotations = convertApiAnnotationToCanvas(annotation.annotationData)
+    
+    // Add converted annotations to canvas
+    canvasAnnotations.value.push(...convertedAnnotations)
+    
+    // Redraw canvas with new annotations
+    redrawCanvas()
+    
+    console.log(`Applied annotation #${annotation.id} with ${convertedAnnotations.length} elements`)
+    
+  } catch (error) {
+    console.error('Error applying annotation:', error)
+    // Could show a toast notification here
+  }
+}
+
+const convertApiAnnotationToCanvas = (annotationData: any): CanvasAnnotation[] => {
+  const canvasAnnotations: CanvasAnnotation[] = []
+  
+  if (!annotationData) {
+    return canvasAnnotations
+  }
+
+  try {
+    // Handle different annotation data formats
+    let annotations = []
+    
+    if (annotationData.annotations && Array.isArray(annotationData.annotations)) {
+      // Format: { annotations: [...] }
+      annotations = annotationData.annotations
+    } else if (Array.isArray(annotationData)) {
+      // Format: [...]
+      annotations = annotationData
+    } else if (annotationData.type) {
+      // Format: single annotation object
+      annotations = [annotationData]
+    }
+
+    for (const ann of annotations) {
+      if (ann.type === 'rectangle') {
+        // Rectangle format: { type: 'rectangle', startPoint: {x, y}, width: number, height: number }
+        if (ann.startPoint && typeof ann.width === 'number' && typeof ann.height === 'number') {
+          canvasAnnotations.push({
+            type: 'rectangle',
+            startPoint: { x: ann.startPoint.x, y: ann.startPoint.y },
+            width: ann.width,
+            height: ann.height
+          })
+        }
+        // COCO bbox format: { type: 'rectangle', bbox: [x, y, width, height] }
+        else if (ann.bbox && Array.isArray(ann.bbox) && ann.bbox.length >= 4) {
+          canvasAnnotations.push({
+            type: 'rectangle',
+            startPoint: { x: ann.bbox[0], y: ann.bbox[1] },
+            width: ann.bbox[2],
+            height: ann.bbox[3]
+          })
+        }
+      } else if (ann.type === 'polygon') {
+        // Polygon format: { type: 'polygon', points: [{x, y}, ...] }
+        if (ann.points && Array.isArray(ann.points) && ann.points.length >= 3) {
+          canvasAnnotations.push({
+            type: 'polygon',
+            points: ann.points.map((p: { x: number; y: number }) => ({ x: p.x, y: p.y }))
+          })
+        }
+        // COCO segmentation format: { type: 'polygon', segmentation: [[x1,y1,x2,y2,...]] }
+        else if (ann.segmentation && Array.isArray(ann.segmentation) && ann.segmentation[0]) {
+          const coords = ann.segmentation[0]
+          const points = []
+          
+          // Convert flat array to points array
+          for (let i = 0; i < coords.length; i += 2) {
+            if (i + 1 < coords.length) {
+              points.push({ x: coords[i], y: coords[i + 1] })
+            }
+          }
+          
+          if (points.length >= 3) {
+            canvasAnnotations.push({
+              type: 'polygon',
+              points: points
+            })
+          }
+        }
+      }
+      // Handle legacy formats or other types
+      else if (ann.bbox && Array.isArray(ann.bbox)) {
+        // Fallback to bbox if type is not specified
+        canvasAnnotations.push({
+          type: 'rectangle',
+          startPoint: { x: ann.bbox[0], y: ann.bbox[1] },
+          width: ann.bbox[2],
+          height: ann.bbox[3]
+        })
+      }
+    }
+    
+  } catch (error) {
+    console.error('Error converting annotation data:', error)
+  }
+
+  return canvasAnnotations
+}
 </script>
