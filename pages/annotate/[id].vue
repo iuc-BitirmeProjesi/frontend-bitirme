@@ -124,8 +124,7 @@
           </div>          <!-- Annotations list -->
           <div v-else class="space-y-4">
             <div v-for="annotation in annotations" :key="annotation.id" 
-                 class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
-              <div class="flex items-start justify-between mb-2">
+                 class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">              <div class="flex items-start justify-between mb-2">
                 <div class="flex items-center space-x-2">
                   <span class="text-sm font-medium text-gray-900 dark:text-white">
                     Annotation #{{ annotation.id }}
@@ -135,14 +134,25 @@
                     {{ annotation.reviewStatus }}
                   </span>
                 </div>
-                <UButton 
-                  size="xs" 
-                  color="primary" 
-                  @click="applyAnnotation(annotation)"
-                  :disabled="!isImageTask"
-                >
-                  Apply
-                </UButton>
+                <div class="flex items-center space-x-2">
+                  <UButton 
+                    size="xs" 
+                    color="primary" 
+                    @click="applyAnnotation(annotation)"
+                    :disabled="!isImageTask"
+                  >
+                    Apply
+                  </UButton>                  <UButton 
+                    size="xs" 
+                    color="error" 
+                    variant="ghost"
+                    @click="deleteAnnotationFromDb(annotation.id)"
+                    :loading="deletingAnnotation === annotation.id"
+                    title="Delete annotation"
+                  >
+                    <UIcon name="i-heroicons-x-mark" class="w-4 h-4" />
+                  </UButton>
+                </div>
               </div>
               
               <div class="space-y-2 text-xs">
@@ -367,6 +377,7 @@ const taskData = ref<TaskData | null>(null)
 const annotations = ref<Annotation[]>([])
 const savingAnnotation = ref(false)
 const savingAndNext = ref(false)
+const deletingAnnotation = ref<number | null>(null)
 
 // Auth
 const token = useCookie('auth_token')
@@ -999,10 +1010,38 @@ const applyAnnotation = (annotation: Annotation) => {
     redrawCanvas()
     
     console.log(`Applied annotation #${annotation.id} with ${convertedAnnotations.length} elements`)
-    
-  } catch (error) {
+      } catch (error) {
     console.error('Error applying annotation:', error)
     // Could show a toast notification here
+  }
+}
+
+const deleteAnnotationFromDb = async (annotationId: number) => {
+  if (!token.value) {
+    console.error('Authentication required')
+    return
+  }
+
+  try {
+    deletingAnnotation.value = annotationId
+    
+    await $fetch(`http://localhost:8787/api/annotations/${annotationId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token.value}`
+      }
+    })
+
+    // Remove annotation from local state
+    annotations.value = annotations.value.filter(annotation => annotation.id !== annotationId)
+    
+    console.log(`Annotation #${annotationId} deleted successfully`)
+    
+  } catch (error) {
+    console.error('Error deleting annotation:', error)
+    // Could show a toast notification here
+  } finally {
+    deletingAnnotation.value = null
   }
 }
 
