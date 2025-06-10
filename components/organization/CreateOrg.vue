@@ -418,9 +418,9 @@ function goToOrganizationPage() {
   // This would route to the organization page, e.g. /organization/:id
   // For now, route to a placeholder
   if (orgId.value) {
-    router.push(`/organization/${orgId.value}`)
+    router.push(`/organizations/${orgId.value}`)
   } else {
-    router.push('/organization')
+    router.push('/organizations')
   }
 }
 </script>

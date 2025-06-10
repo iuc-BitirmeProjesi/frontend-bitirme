@@ -55,8 +55,7 @@
                         <UIcon name="i-heroicons-cog-6-tooth" class="w-4 h-4 mr-3" />
                         Settings
                     </button>
-                    
-                    <button
+                      <button
                         @click="handleNavClick('classes')"
                         :class="[
                             'w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
@@ -67,6 +66,32 @@
                     >
                         <UIcon name="i-heroicons-academic-cap" class="w-4 h-4 mr-3" />
                         Classes
+                    </button>
+
+                    <button
+                        @click="handleNavClick('upload-data')"
+                        :class="[
+                            'w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
+                            activeSection === 'upload-data'
+                                ? 'bg-primary text-white'
+                                : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
+                        ]"
+                    >
+                        <UIcon name="i-heroicons-cloud-arrow-up" class="w-4 h-4 mr-3" />
+                        Upload Data
+                    </button>
+
+                    <button
+                        @click="handleNavClick('annotate')"
+                        :class="[
+                            'w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
+                            activeSection === 'annotate'
+                                ? 'bg-primary text-white'
+                                : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
+                        ]"
+                    >
+                        <UIcon name="i-heroicons-pencil-square" class="w-4 h-4 mr-3" />
+                        Annotate
                     </button>
                 </div>
             </div>
@@ -109,8 +134,8 @@ const emit = defineEmits<{
   'section-change': [section: string]
 }>()
 
-// Current active section - default to users
-const activeSection = ref('users')
+// Current active section - sync with global state
+const activeSection = useState('currentProjectSection', () => 'users')
 
 const handleLogout = () => {
     logout()
