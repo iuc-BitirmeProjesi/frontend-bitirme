@@ -392,6 +392,170 @@
               </div>
             </div>
 
+            <!-- Video Upload Section -->
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  Upload Videos
+                </label>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  Upload videos for frame extraction and labeling. Supported formats: MP4, AVI, MOV, MKV, WebM.
+                </p>
+
+                <!-- FPS Selection -->
+                <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Frame Extraction Rate (FPS)
+                  </label>
+                  <div class="flex items-center space-x-4">
+                    <UInput
+                      v-model="videoSettings.fps"
+                      type="number"
+                      min="1"
+                      max="60"
+                      placeholder="Enter FPS"
+                      size="sm"
+                      class="w-32"
+                      :disabled="creating || isUploadingVideos"
+                    />
+                    <div class="flex space-x-2">
+                      <UButton
+                        v-for="preset in fpsPresets"
+                        :key="preset"
+                        @click="videoSettings.fps = preset"
+                        variant="outline"
+                        size="xs"
+                        :color="videoSettings.fps === preset ? 'primary' : 'secondary'"
+                        :disabled="creating || isUploadingVideos"
+                      >
+                        {{ preset }} FPS
+                      </UButton>
+                    </div>
+                  </div>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Higher FPS extracts more frames from videos. Recommended: 1-5 FPS for general use.
+                  </p>
+                </div>
+
+                <!-- Video Drop Zone -->
+                <div
+                  @drop="handleVideoDrop"
+                  @dragover.prevent
+                  @dragenter.prevent="isVideosDragging = true"
+                  @dragleave.prevent="isVideosDragging = false"
+                  class="relative border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-primary/50 transition-colors"
+                  :class="{ 'border-primary bg-primary/5': isVideosDragging }"
+                >
+                  <input
+                    ref="videoFileInput"
+                    type="file"
+                    multiple
+                    accept="video/*"
+                    @change="handleVideoFileSelect"
+                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    :disabled="creating || isUploadingVideos"
+                  />
+                  
+                  <div class="space-y-3">
+                    <div class="flex justify-center">
+                      <UIcon name="i-heroicons-video-camera" class="w-12 h-12 text-gray-400" />
+                    </div>
+                    <div>
+                      <p class="text-lg font-medium text-gray-900 dark:text-white">
+                        Drop video files here or click to browse
+                      </p>
+                      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        Videos (MP4, AVI, MOV, MKV, WebM) up to 100MB each
+                      </p>
+                    </div>
+                    <UButton
+                      type="button"
+                      color="primary"
+                      variant="outline"
+                      icon="i-heroicons-folder-open"
+                      :disabled="creating || isUploadingVideos || !videoSettings.fps"
+                    >
+                      Choose Video Files
+                    </UButton>
+                  </div>
+                </div>
+
+                <!-- Video Upload Progress -->
+                <div v-if="isUploadingVideos" class="mt-4">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Processing videos...</span>
+                    <span class="text-sm text-gray-500">{{ videoUploadProgress }}%</span>
+                  </div>
+                  <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      class="bg-primary h-2 rounded-full transition-all duration-300"
+                      :style="{ width: `${videoUploadProgress}%` }"
+                    ></div>
+                  </div>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    Extracting frames at {{ videoSettings.fps }} FPS...
+                  </p>
+                </div>
+
+                <!-- Uploaded Videos List -->
+                <div v-if="uploadedVideos.length > 0" class="mt-4 space-y-3">
+                  <div class="flex items-center justify-between">
+                    <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Uploaded Videos ({{ uploadedVideos.length }})
+                    </h4>
+                    <UButton
+                      @click="clearAllVideos"
+                      variant="ghost"
+                      color="error"
+                      size="xs"
+                      icon="i-heroicons-trash"
+                      :disabled="creating || isUploadingVideos"
+                    >
+                      Clear All
+                    </UButton>
+                  </div>
+                  
+                  <div class="max-h-48 overflow-y-auto space-y-2 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                    <div
+                      v-for="(video, index) in uploadedVideos"
+                      :key="index"
+                      class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                    >
+                      <div class="flex items-center space-x-3">
+                        <div class="flex-shrink-0">
+                          <UIcon name="i-heroicons-video-camera" class="w-5 h-5 text-gray-500" />
+                        </div>
+                        <div class="min-w-0 flex-1">
+                          <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
+                            {{ video.name }}
+                          </p>
+                          <p class="text-xs text-gray-500 dark:text-gray-400">
+                            {{ formatFileSize(video.size) }}
+                          </p>
+                        </div>
+                      </div>
+                      <UButton
+                        @click="removeVideo(index)"
+                        variant="ghost"
+                        color="error"
+                        size="xs"
+                        icon="i-heroicons-x-mark"
+                        :disabled="creating || isUploadingVideos"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Empty State for Videos -->
+                <div v-else class="mt-4 text-center py-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                  <UIcon name="i-heroicons-video-camera" class="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                  <p class="text-sm text-gray-500 dark:text-gray-400">
+                    No videos uploaded yet. Add videos to extract frames for labeling.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <!-- Form Actions -->
             <div class="flex justify-end space-x-3 pt-6">
               <UButton
@@ -507,29 +671,61 @@
               <!-- Files Preview -->
               <div>
                 <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Files</label>
-                <div v-if="uploadedFiles.length > 0" class="mt-1">
-                  <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                    {{ uploadedFiles.length }} file{{ uploadedFiles.length !== 1 ? 's' : '' }} uploaded
-                  </p>
-                  <div class="space-y-1">
-                    <div
-                      v-for="file in uploadedFiles.slice(0, 3)"
-                      :key="file.name"
-                      class="flex items-center space-x-2 text-xs"
-                    >
-                      <UIcon 
-                        :name="getFileIcon(file)" 
-                        class="w-3 h-3 text-gray-500 flex-shrink-0" 
-                      />
-                      <span class="text-gray-900 dark:text-white truncate">
-                        {{ file.name }}
-                      </span>
+                <div v-if="uploadedFiles.length > 0 || uploadedVideos.length > 0" class="mt-1 space-y-3">
+                  <!-- Images -->
+                  <div v-if="uploadedFiles.length > 0">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                      {{ uploadedFiles.length }} image{{ uploadedFiles.length !== 1 ? 's' : '' }} uploaded
+                    </p>
+                    <div class="space-y-1">
+                      <div
+                        v-for="file in uploadedFiles.slice(0, 3)"
+                        :key="file.name"
+                        class="flex items-center space-x-2 text-xs"
+                      >
+                        <UIcon 
+                          :name="getFileIcon(file)" 
+                          class="w-3 h-3 text-gray-500 flex-shrink-0" 
+                        />
+                        <span class="text-gray-900 dark:text-white truncate">
+                          {{ file.name }}
+                        </span>
+                      </div>
+                      <div
+                        v-if="uploadedFiles.length > 3"
+                        class="text-xs text-gray-500 dark:text-gray-400 pl-5"
+                      >
+                        +{{ uploadedFiles.length - 3 }} more files
+                      </div>
                     </div>
-                    <div
-                      v-if="uploadedFiles.length > 3"
-                      class="text-xs text-gray-500 dark:text-gray-400 pl-5"
-                    >
-                      +{{ uploadedFiles.length - 3 }} more files
+                  </div>
+
+                  <!-- Videos -->
+                  <div v-if="uploadedVideos.length > 0">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                      {{ uploadedVideos.length }} video{{ uploadedVideos.length !== 1 ? 's' : '' }} uploaded
+                      <span v-if="videoSettings.fps" class="text-primary">({{ videoSettings.fps }} FPS)</span>
+                    </p>
+                    <div class="space-y-1">
+                      <div
+                        v-for="video in uploadedVideos.slice(0, 3)"
+                        :key="video.name"
+                        class="flex items-center space-x-2 text-xs"
+                      >
+                        <UIcon 
+                          name="i-heroicons-video-camera" 
+                          class="w-3 h-3 text-gray-500 flex-shrink-0" 
+                        />
+                        <span class="text-gray-900 dark:text-white truncate">
+                          {{ video.name }}
+                        </span>
+                      </div>
+                      <div
+                        v-if="uploadedVideos.length > 3"
+                        class="text-xs text-gray-500 dark:text-gray-400 pl-5"
+                      >
+                        +{{ uploadedVideos.length - 3 }} more videos
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -550,6 +746,8 @@
                     <li>• Select the appropriate project type for better organization</li>
                     <li>• Add class labels that represent the categories you want to identify</li>
                     <li>• Upload images or ZIP files to start with initial data</li>
+                    <li>• Upload videos to extract frames for annotation (requires FFmpeg)</li>
+                    <li>• Set appropriate FPS for video frame extraction (1-5 FPS recommended)</li>
                     <li>• You can always add more classes and files later in the project settings</li>
                   </ul>
                 </div>
@@ -602,6 +800,16 @@ const uploadedFiles = ref<File[]>([])
 const isUploading = ref(false)
 const uploadProgress = ref(0)
 
+// Video upload state
+const uploadedVideos = ref<File[]>([])
+const isUploadingVideos = ref(false)
+const videoUploadProgress = ref(0)
+
+// Video settings
+const videoSettings = reactive({
+  fps: 5 // Default FPS
+})
+
 // Project type options
 const projectTypes = [
   { label: 'Classification', value: 1, description: 'Categorize and classify data into predefined categories or labels' },
@@ -609,15 +817,20 @@ const projectTypes = [
   { label: 'Data Analysis', value: 3, description: 'Analyze and extract insights from structured or unstructured data sets' }
 ]
 
+// FPS presets
+const fpsPresets = [1, 5, 10, 15, 30, 60]
+
 // Computed
 const selectedProjectType = computed(() => {
   return projectTypes.find(type => type.value === projectForm.projectType)
 })
 
 const isDragging = ref(false)
+const isVideosDragging = ref(false)
 
 // Refs
 const fileInput = ref<HTMLInputElement>()
+const videoFileInput = ref<HTMLInputElement>()
 
 // Methods
 const selectProjectType = (type: number) => {
@@ -820,6 +1033,94 @@ const clearAllFiles = () => {
   })
 }
 
+// Video file handling methods
+const handleVideoDrop = (event: DragEvent) => {
+  event.preventDefault()
+  isVideosDragging.value = false
+  
+  const files = event.dataTransfer?.files
+  if (files) {
+    handleVideoFiles(Array.from(files))
+  }
+}
+
+const handleVideoFileSelect = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const files = target.files
+  if (files) {
+    handleVideoFiles(Array.from(files))
+  }
+}
+
+const handleVideoFiles = (files: File[]) => {
+  const validFiles: File[] = []
+  const invalidFiles: string[] = []
+  
+  files.forEach(file => {
+    // Check file type
+    const isVideo = file.type.startsWith('video/')
+    
+    // Check file size (100MB limit)
+    const maxSize = 100 * 1024 * 1024 // 100MB in bytes
+    
+    if (!isVideo) {
+      invalidFiles.push(`${file.name} - Invalid file type`)
+    } else if (file.size > maxSize) {
+      invalidFiles.push(`${file.name} - File too large (max 100MB)`)
+    } else if (uploadedVideos.value.some(v => v.name === file.name && v.size === file.size)) {
+      invalidFiles.push(`${file.name} - File already uploaded`)
+    } else {
+      validFiles.push(file)
+    }
+  })
+  
+  // Add valid files
+  if (validFiles.length > 0) {
+    uploadedVideos.value.push(...validFiles)
+    
+    toast.add({
+      title: 'Videos Added',
+      description: `${validFiles.length} video(s) added successfully`,
+      color: 'success'
+    })
+  }
+  
+  // Show warnings for invalid files
+  if (invalidFiles.length > 0) {
+    toast.add({
+      title: 'Some Videos Skipped',
+      description: invalidFiles.join(', '),
+      color: 'warning'
+    })
+  }
+  
+  // Clear the input
+  if (videoFileInput.value) {
+    videoFileInput.value.value = ''
+  }
+}
+
+const removeVideo = (index: number) => {
+  const videoName = uploadedVideos.value[index].name
+  uploadedVideos.value.splice(index, 1)
+  
+  toast.add({
+    title: 'Video Removed',
+    description: `${videoName} has been removed`,
+    color: 'info'
+  })
+}
+
+const clearAllVideos = () => {
+  uploadedVideos.value = []
+  
+  toast.add({
+    title: 'All Videos Cleared',
+    description: 'All uploaded videos have been removed',
+    color: 'info'
+  })
+}
+
 const getFileIcon = (file: File) => {
   if (file.type.startsWith('image/')) {
     return 'i-heroicons-photo'
@@ -889,6 +1190,12 @@ const createProject = async () => {
 
   if (projectForm.description && projectForm.description.length > 500) {
     error.value = 'Description must be less than 500 characters'
+    return
+  }
+
+  // Validate video uploads have FPS set
+  if (uploadedVideos.value.length > 0 && (!videoSettings.fps || videoSettings.fps <= 0)) {
+    error.value = 'Please set a valid FPS value for video processing'
     return
   }
 
@@ -981,8 +1288,62 @@ const createProject = async () => {
         isUploading.value = false
         uploadProgress.value = 0
       }
-    } else {
-      // No files to upload
+    }
+
+    // Step 3: Upload videos if any exist
+    if (uploadedVideos.value.length > 0) {
+      isUploadingVideos.value = true
+      videoUploadProgress.value = 0
+
+      try {
+        // Create FormData for video upload
+        const videoFormData = new FormData()
+        uploadedVideos.value.forEach(video => {
+          videoFormData.append('files', video)
+        })
+
+        const videoUploadResponse = await fetch('http://localhost:8787/api/bucket/uploadDataVideo', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token.value}`,
+            'projectId': projectId.toString(),
+            'fps': videoSettings.fps.toString()
+          },
+          body: videoFormData
+        })
+
+        if (!videoUploadResponse.ok) {
+          const videoUploadErrorData = await videoUploadResponse.text()
+          console.warn(`Video upload failed: ${videoUploadResponse.statusText} - ${videoUploadErrorData}`)
+          
+          toast.add({
+            title: 'Video Upload Failed',
+            description: `Video upload failed. You can upload videos later from the project page.`,
+            color: 'warning'
+          })
+        } else {
+          const videoResult = await videoUploadResponse.json()
+          toast.add({
+            title: 'Videos Processed Successfully',
+            description: `${uploadedVideos.value.length} video(s) uploaded and ${videoResult.createdTasks} frames extracted at ${videoSettings.fps} FPS`,
+            color: 'success'
+          })
+        }
+      } catch (videoUploadErr) {
+        console.warn('Video upload error:', videoUploadErr)
+        toast.add({
+          title: 'Video Upload Failed',
+          description: `Video upload failed. You can upload videos later from the project page.`,
+          color: 'warning'
+        })
+      } finally {
+        isUploadingVideos.value = false
+        videoUploadProgress.value = 0
+      }
+    }
+
+    // Show final success message if no uploads or all successful
+    if (uploadedFiles.value.length === 0 && uploadedVideos.value.length === 0) {
       toast.add({
         title: 'Project Created',
         description: `Project "${projectForm.name}" has been created successfully`,
@@ -1000,6 +1361,8 @@ const createProject = async () => {
     creating.value = false
     isUploading.value = false
     uploadProgress.value = 0
+    isUploadingVideos.value = false
+    videoUploadProgress.value = 0
   }
 }
 
