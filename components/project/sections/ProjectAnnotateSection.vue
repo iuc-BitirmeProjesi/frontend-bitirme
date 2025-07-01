@@ -405,14 +405,15 @@ const completeSelectedTasks = async () => {
       throw new Error('Authentication required')
     }
     
-    const response = await $fetch('http://localhost:8787/api/tasks/complete', {
-      method: 'POST',
+    const response = await $fetch('http://localhost:8787/api/tasks/update', {
+      method: 'PUT',
       headers: {
         'Authorization': `Bearer ${token.value}`,
         'Content-Type': 'application/json'
       },
       body: {
-        taskIds: selectedAnnotatingTasks.value
+        taskId: selectedAnnotatingTasks.value,
+        status: 'completed'
       }
     })
       console.log('Tasks completed successfully:', response)
