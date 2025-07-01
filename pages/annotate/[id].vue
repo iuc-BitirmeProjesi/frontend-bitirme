@@ -75,9 +75,18 @@
                     <span 
                       v-for="(className, index) in projectData.labelConfig.classes" 
                       :key="index"
-                      class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-600"
+                      :class="[
+                        'inline-flex items-center px-2 py-1 rounded-md text-xs font-medium border',
+                        lastSelectedClass === className 
+                          ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 border-blue-400 dark:border-blue-500' 
+                          : 'bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-600'
+                      ]"
                     >
-                      {{ className }}
+                      <span v-if="index < 9" class="w-4 h-4 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center mr-1 font-medium">
+                        {{ index + 1 }}
+                      </span>
+                      <span class="flex-1">{{ className }}</span>
+                      <UIcon v-if="lastSelectedClass === className" name="i-heroicons-star-solid" class="w-3 h-3 text-yellow-500 ml-1" />
                     </span>
                   </div>
                 </div>
@@ -344,6 +353,55 @@
                   <UIcon name="i-heroicons-arrows-pointing-out" class="w-5 h-5" />
                 </button>
               </div>
+
+              <!-- Class Selection Popup -->
+              <div 
+                v-if="showClassSelector && projectData?.labelConfig?.classes?.length"
+                data-class-selector
+                class="absolute bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 z-20 border border-gray-200 dark:border-gray-600 min-w-48"
+                :style="{
+                  left: `${classSelectorPosition.x}px`,
+                  top: `${classSelectorPosition.y}px`,
+                }"
+              >
+                <div class="flex items-center mb-3">
+                  <UIcon name="i-heroicons-tag" class="w-4 h-4 text-blue-500 mr-2" />
+                  <h3 class="text-sm font-medium text-gray-900 dark:text-white">Select Class</h3>
+                </div>
+                <div class="space-y-2 max-h-48 overflow-y-auto">
+                  <button
+                    v-for="(className, index) in projectData.labelConfig.classes"
+                    :key="index"
+                    @click="selectAnnotationClass(className)"
+                    :class="[
+                      'w-full text-left px-3 py-2 rounded-md text-sm transition-colors border flex items-center',
+                      lastSelectedClass === className 
+                        ? 'bg-blue-100 dark:bg-blue-900/40 border-blue-400 dark:border-blue-500 text-blue-700 dark:text-blue-300' 
+                        : 'hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-700 dark:hover:text-blue-300 border-gray-200 dark:border-gray-600'
+                    ]"
+                  >
+                    <span class="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center mr-3 font-medium">
+                      {{ index + 1 }}
+                    </span>
+                    <span class="flex-1">{{ className }}</span>
+                    <span v-if="lastSelectedClass === className" class="text-xs text-blue-600 dark:text-blue-400 ml-2">
+                      Enter
+                    </span>
+                  </button>
+                </div>
+                <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                  <div class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                    Press 1-{{ projectData.labelConfig.classes.length }} or Enter for last selected
+                  </div>
+                  <button
+                    @click="cancelClassSelection"
+                    class="w-full px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
+                  >
+                    <UIcon name="i-heroicons-x-mark" class="w-4 h-4 inline mr-1" />
+                    Cancel (Esc)
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
           
@@ -456,6 +514,7 @@ interface CanvasAnnotation {
   points?: { x: number; y: number }[]
   center?: { x: number; y: number }
   radius?: number
+  className?: string
 }
 
 // Canvas refs and state
@@ -482,6 +541,13 @@ const clickedAnnotation = ref<number | null>(null)
 const annotationToolsPosition = ref({ x: 0, y: 0 })
 const hoveredPoint = ref<number | null>(null)
 const isOverAnnotation = ref(false)
+
+// Class selection popup state
+const showClassSelector = ref(false)
+const classSelectorPosition = ref({ x: 0, y: 0 })
+const pendingAnnotation = ref<CanvasAnnotation | null>(null)
+const selectedClass = ref<string | null>(null)
+const lastSelectedClass = ref<string | null>(null)
 
 // Computed properties
 const isImageTask = computed(() => {
@@ -693,13 +759,21 @@ const handleClick = (event: MouseEvent) => {
       }
     }
   } else if (currentTool.value === 'dots') {
-    // Create dot annotation immediately on click
-    canvasAnnotations.value.push({
+    // Create dot annotation and show class selector
+    const newAnnotation: CanvasAnnotation = {
       type: 'dot',
       center: point,
       radius: 5 // Default radius
-    })
-    redrawCanvas()
+    }
+    
+    // Show class selector if classes are available
+    if (projectData.value?.labelConfig?.classes?.length) {
+      showClassSelectorPopup(newAnnotation, point)
+    } else {
+      // Add annotation without class if no classes available
+      canvasAnnotations.value.push(newAnnotation)
+      redrawCanvas()
+    }
   } else {
     // Handle clicking annotations
     const found = findAnnotationUnderPoint(point)
@@ -822,32 +896,105 @@ const updateAnnotationToolsPosition = (point: { x: number; y: number }) => {
   }
 }
 
+const showClassSelectorPopup = (annotation: CanvasAnnotation, position: { x: number; y: number }) => {
+  if (!canvas.value) return
+  
+  pendingAnnotation.value = annotation
+  const rect = canvas.value.getBoundingClientRect()
+  
+  // Position the popup near the mouse but ensure it stays within viewport
+  const popupWidth = 200 // Estimated popup width
+  const popupHeight = 150 // Estimated popup height
+  
+  let x = position.x + rect.left + 10
+  let y = position.y + rect.top - 10
+  
+  // Adjust if popup would go off screen
+  if (x + popupWidth > window.innerWidth) {
+    x = position.x + rect.left - popupWidth - 10
+  }
+  if (y + popupHeight > window.innerHeight) {
+    y = position.y + rect.top - popupHeight + 10
+  }
+  
+  classSelectorPosition.value = { x, y }
+  showClassSelector.value = true
+}
+
+const selectAnnotationClass = (className: string) => {
+  if (!pendingAnnotation.value) return
+  
+  // Remember the last selected class
+  lastSelectedClass.value = className
+  
+  // Add the class to the annotation
+  pendingAnnotation.value.className = className
+  
+  // Add the annotation to the canvas
+  canvasAnnotations.value.push(pendingAnnotation.value)
+  
+  // Clean up
+  pendingAnnotation.value = null
+  showClassSelector.value = false
+  
+  // Redraw canvas
+  redrawCanvas()
+}
+
+const cancelClassSelection = () => {
+  // Don't add the annotation if cancelled
+  pendingAnnotation.value = null
+  showClassSelector.value = false
+  
+  // Redraw canvas to remove any preview
+  redrawCanvas()
+}
+
 const completeRectangle = (endPoint: { x: number; y: number }) => {
   if (!startPoint.value) return
   
-  canvasAnnotations.value.push({
+  const newAnnotation: CanvasAnnotation = {
     type: 'rectangle',
     startPoint: { ...startPoint.value },
     width: endPoint.x - startPoint.value.x,
     height: endPoint.y - startPoint.value.y
-  })
+  }
+  
+  // Show class selector if classes are available
+  if (projectData.value?.labelConfig?.classes?.length) {
+    showClassSelectorPopup(newAnnotation, endPoint)
+  } else {
+    // Add annotation without class if no classes available
+    canvasAnnotations.value.push(newAnnotation)
+    redrawCanvas()
+  }
   
   isAnnotating.value = false
   startPoint.value = null
-  redrawCanvas()
 }
 
 const completePolygon = () => {
   if (currentPath.value.length < 3) return
   
-  canvasAnnotations.value.push({
+  const newAnnotation: CanvasAnnotation = {
     type: 'polygon',
     points: [...currentPath.value]
-  })
+  }
+  
+  // Show class selector if classes are available
+  if (projectData.value?.labelConfig?.classes?.length) {
+    // Use the center of the polygon for popup position
+    const centerX = currentPath.value.reduce((sum, p) => sum + p.x, 0) / currentPath.value.length
+    const centerY = currentPath.value.reduce((sum, p) => sum + p.y, 0) / currentPath.value.length
+    showClassSelectorPopup(newAnnotation, { x: centerX, y: centerY })
+  } else {
+    // Add annotation without class if no classes available
+    canvasAnnotations.value.push(newAnnotation)
+    redrawCanvas()
+  }
   
   isAnnotating.value = false
   currentPath.value = []
-  redrawCanvas()
 }
 
 const completeAnnotation = () => {
@@ -936,16 +1083,47 @@ const drawExistingAnnotations = () => {
         annotation.width,
         annotation.height
       )
+      
+      // Draw class name if available
+      if (annotation.className) {
+        ctx.value!.fillStyle = isSelected ? '#ff0000' : '#00ff00'
+        ctx.value!.font = '12px Arial'
+        ctx.value!.fillText(
+          annotation.className,
+          annotation.startPoint.x,
+          annotation.startPoint.y - 5
+        )
+      }
     } else if (annotation.type === 'polygon' && annotation.points) {
       ctx.value!.moveTo(annotation.points[0].x, annotation.points[0].y)
       annotation.points.forEach(point => {
         ctx.value!.lineTo(point.x, point.y)
       })
       ctx.value!.closePath()
+      
+      // Draw class name if available
+      if (annotation.className && annotation.points.length > 0) {
+        const centerX = annotation.points.reduce((sum, p) => sum + p.x, 0) / annotation.points.length
+        const centerY = annotation.points.reduce((sum, p) => sum + p.y, 0) / annotation.points.length
+        ctx.value!.fillStyle = isSelected ? '#ff0000' : '#00ff00'
+        ctx.value!.font = '12px Arial'
+        ctx.value!.fillText(annotation.className, centerX, centerY - 5)
+      }
     } else if (annotation.type === 'dot' && annotation.center && annotation.radius) {
       ctx.value!.arc(annotation.center.x, annotation.center.y, annotation.radius, 0, 2 * Math.PI)
       ctx.value!.fillStyle = isSelected ? 'rgba(255, 0, 0, 0.3)' : 'rgba(0, 255, 0, 0.3)'
       ctx.value!.fill()
+      
+      // Draw class name if available
+      if (annotation.className) {
+        ctx.value!.fillStyle = isSelected ? '#ff0000' : '#00ff00'
+        ctx.value!.font = '12px Arial'
+        ctx.value!.fillText(
+          annotation.className,
+          annotation.center.x + annotation.radius + 5,
+          annotation.center.y - 5
+        )
+      }
     }
     
     ctx.value!.strokeStyle = isSelected ? '#ff0000' : '#00ff00'
@@ -1032,7 +1210,27 @@ watch(taskData, (newTaskData) => {
 // Keyboard event handler
 const handleKeyDown = (event: KeyboardEvent) => {
   if (event.key === 'Escape') {
-    cancelAnnotation()
+    if (showClassSelector.value) {
+      cancelClassSelection()
+    } else {
+      cancelAnnotation()
+    }
+  } else if (showClassSelector.value && projectData.value?.labelConfig?.classes) {
+    // Handle number keys for class selection (1-9)
+    const numKey = parseInt(event.key)
+    if (numKey >= 1 && numKey <= projectData.value.labelConfig.classes.length && numKey <= 9) {
+      const className = projectData.value.labelConfig.classes[numKey - 1]
+      selectAnnotationClass(className)
+      event.preventDefault()
+    }
+    // Handle Enter key for last selected class
+    else if (event.key === 'Enter' && lastSelectedClass.value) {
+      // Check if the last selected class is still available in current classes
+      if (projectData.value.labelConfig.classes.includes(lastSelectedClass.value)) {
+        selectAnnotationClass(lastSelectedClass.value)
+        event.preventDefault()
+      }
+    }
   }
 }
 
@@ -1059,7 +1257,9 @@ const saveAnnotation = async () => {
       throw new Error('Authentication required')
     }    const annotationData = {
       annotations: canvasAnnotations.value.map(annotation => ({
-        ...annotation
+        ...annotation,
+        // Include class information in the saved data
+        class: annotation.className
       }))
     }
 
@@ -1202,7 +1402,8 @@ const convertApiAnnotationToCanvas = (annotationData: any): CanvasAnnotation[] =
             type: 'rectangle',
             startPoint: { x: ann.startPoint.x, y: ann.startPoint.y },
             width: ann.width,
-            height: ann.height
+            height: ann.height,
+            className: ann.className || ann.class
           })
         }
         // COCO bbox format: { type: 'rectangle', bbox: [x, y, width, height] }
@@ -1211,7 +1412,8 @@ const convertApiAnnotationToCanvas = (annotationData: any): CanvasAnnotation[] =
             type: 'rectangle',
             startPoint: { x: ann.bbox[0], y: ann.bbox[1] },
             width: ann.bbox[2],
-            height: ann.bbox[3]
+            height: ann.bbox[3],
+            className: ann.className || ann.class
           })
         }
       } else if (ann.type === 'polygon') {
@@ -1219,7 +1421,8 @@ const convertApiAnnotationToCanvas = (annotationData: any): CanvasAnnotation[] =
         if (ann.points && Array.isArray(ann.points) && ann.points.length >= 3) {
           canvasAnnotations.push({
             type: 'polygon',
-            points: ann.points.map((p: { x: number; y: number }) => ({ x: p.x, y: p.y }))
+            points: ann.points.map((p: { x: number; y: number }) => ({ x: p.x, y: p.y })),
+            className: ann.className || ann.class
           })
         }
         // COCO segmentation format: { type: 'polygon', segmentation: [[x1,y1,x2,y2,...]] }
@@ -1237,9 +1440,20 @@ const convertApiAnnotationToCanvas = (annotationData: any): CanvasAnnotation[] =
           if (points.length >= 3) {
             canvasAnnotations.push({
               type: 'polygon',
-              points: points
+              points: points,
+              className: ann.className || ann.class
             })
           }
+        }
+      } else if (ann.type === 'dot') {
+        // Dot format: { type: 'dot', center: {x, y}, radius: number }
+        if (ann.center && typeof ann.radius === 'number') {
+          canvasAnnotations.push({
+            type: 'dot',
+            center: { x: ann.center.x, y: ann.center.y },
+            radius: ann.radius,
+            className: ann.className || ann.class
+          })
         }
       }
       // Handle legacy formats or other types
@@ -1249,7 +1463,8 @@ const convertApiAnnotationToCanvas = (annotationData: any): CanvasAnnotation[] =
           type: 'rectangle',
           startPoint: { x: ann.bbox[0], y: ann.bbox[1] },
           width: ann.bbox[2],
-          height: ann.bbox[3]
+          height: ann.bbox[3],
+          className: ann.className || ann.class
         })
       }
     }
