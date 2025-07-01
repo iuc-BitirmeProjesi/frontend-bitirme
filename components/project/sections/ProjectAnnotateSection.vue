@@ -204,7 +204,220 @@
         </div>
 
         <!-- Completed Tab -->
-        <div v-if="activeTab === 'completed'">
+        <div v-if="activeTab === 'completed'" @click.stop>
+          <!-- Export Button Header -->
+          <div v-if="tasks.completed.length > 0" class="flex justify-between items-center mb-6">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+              Completed Tasks ({{ tasks.completed.length }})
+            </h3>
+<!--             <UButton 
+              @click.stop="openExportModal" 
+              color="success"
+              variant="solid"
+              :loading="exportLoading"
+            >
+              <UIcon name="i-heroicons-arrow-down-tray" class="w-4 h-4 mr-2" />
+              Export Dataset
+            </UButton> -->
+          </div>
+          <!-- Export Dataset Modal -->
+          <UModal v-model="showExportModal">
+            <UCard>
+              <template #header>
+                <div class="flex items-center justify-between">
+                  <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                    Export Dataset
+                  </h3>
+                  <UButton 
+                    color="neutral" 
+                    variant="ghost" 
+                    icon="i-heroicons-x-mark-20-solid" 
+                    class="-my-1"
+                    @click="closeExportModal"
+                  />
+                </div>
+              </template>
+
+              <div class="space-y-6">
+                <div>
+                  <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">
+                    Export Format
+                  </h4>
+                  <div class="space-y-3">
+                    <label class="flex items-center space-x-3">
+                      <input 
+                        type="radio" 
+                        v-model="selectedExportFormat" 
+                        value="yolo"
+                        class="text-primary focus:ring-primary"
+                      >
+                      <div>
+                        <p class="text-sm font-medium text-gray-900 dark:text-white">YOLO Format</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                          Standard YOLO annotation format with normalized coordinates
+                        </p>
+                      </div>
+                    </label>
+                    <!-- Future formats can be added here -->
+                    <label class="flex items-center space-x-3 opacity-50 cursor-not-allowed">
+                      <input 
+                        type="radio" 
+                        disabled
+                        class="text-gray-400"
+                      >
+                      <div>
+                        <p class="text-sm font-medium text-gray-400">COCO Format</p>
+                        <p class="text-xs text-gray-400">Coming soon...</p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Dataset Split Configuration -->
+                <div>
+                  <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">
+                    Dataset Split Configuration
+                  </h4>
+                  <div class="space-y-4">
+                    <div class="grid grid-cols-3 gap-4">
+                      <!-- Train Split -->
+                      <div>
+                        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Train (%)
+                        </label>
+                        <input 
+                          type="number"
+                          v-model.number="trainPercentage"
+                          min="0"
+                          max="100"
+                          @input="updateSplitPercentages('train')"
+                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
+                        />
+                      </div>
+                      
+                      <!-- Test Split -->
+                      <div>
+                        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Test (%)
+                        </label>
+                        <input 
+                          type="number"
+                          v-model.number="testPercentage"
+                          min="0"
+                          max="100"
+                          @input="updateSplitPercentages('test')"
+                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
+                        />
+                      </div>
+                      
+                      <!-- Validation Split -->
+                      <div>
+                        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Validation (%)
+                        </label>
+                        <input 
+                          type="number"
+                          v-model.number="validationPercentage"
+                          min="0"
+                          max="100"
+                          @input="updateSplitPercentages('validation')"
+                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
+                        />
+                      </div>
+                    </div>
+                    
+                    <!-- Visual Progress Bars -->
+                    <div class="space-y-2">
+                      <div class="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
+                        <span>Split Distribution</span>
+                        <span class="font-medium" :class="totalPercentage === 100 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
+                          Total: {{ totalPercentage }}%
+                        </span>
+                      </div>
+                      <div class="flex rounded-lg overflow-hidden h-2">
+                        <div 
+                          class="bg-blue-500 transition-all duration-200" 
+                          :style="{ width: `${trainPercentage}%` }"
+                          :title="`Train: ${trainPercentage}%`"
+                        ></div>
+                        <div 
+                          class="bg-green-500 transition-all duration-200" 
+                          :style="{ width: `${testPercentage}%` }"
+                          :title="`Test: ${testPercentage}%`"
+                        ></div>
+                        <div 
+                          class="bg-yellow-500 transition-all duration-200" 
+                          :style="{ width: `${validationPercentage}%` }"
+                          :title="`Validation: ${validationPercentage}%`"
+                        ></div>
+                      </div>
+                      <div class="flex justify-between text-xs">
+                        <span class="flex items-center">
+                          <div class="w-2 h-2 bg-blue-500 rounded-full mr-1"></div>
+                          Train ({{ Math.round((tasks?.completed?.length || 0) * trainPercentage / 100) }} tasks)
+                        </span>
+                        <span class="flex items-center">
+                          <div class="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
+                          Test ({{ Math.round((tasks?.completed?.length || 0) * testPercentage / 100) }} tasks)
+                        </span>
+                        <span class="flex items-center">
+                          <div class="w-2 h-2 bg-yellow-500 rounded-full mr-1"></div>
+                          Validation ({{ Math.round((tasks?.completed?.length || 0) * validationPercentage / 100) }} tasks)
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <!-- Warning for invalid split -->
+                    <div v-if="totalPercentage !== 100" class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                      <div class="flex items-start">
+                        <UIcon name="i-heroicons-exclamation-triangle" class="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 mr-2" />
+                        <div>
+                          <p class="text-xs font-medium text-amber-800 dark:text-amber-300">Invalid Split</p>
+                          <p class="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                            Percentages must total exactly 100%. Current total: {{ totalPercentage }}%
+                          </p>
+                        </div>
+                      </div>
+                      
+                    </div>
+                  </div>
+                </div>
+
+                <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                  <div class="flex items-start">
+                    <UIcon name="i-heroicons-information-circle" class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 mr-3" />
+                    <div>
+                      <h5 class="text-sm font-medium text-blue-900 dark:text-blue-300">Export Information</h5>
+                      <p class="text-sm text-blue-700 dark:text-blue-400 mt-1">
+                        This will export {{ tasks?.completed?.length || 0 }} completed tasks with their annotations.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <template #footer>
+                <div class="flex justify-end space-x-3">
+                  <UButton 
+                    color="neutral" 
+                    variant="outline" 
+                    @click="closeExportModal"
+                  >
+                    Cancel
+                  </UButton>
+                  <UButton 
+                    color="primary" 
+                    @click="handleExportDataset"
+                    :loading="exportLoading"
+                    :disabled="!selectedExportFormat || totalPercentage !== 100"
+                  >
+                    <UIcon name="i-heroicons-arrow-down-tray" class="w-4 h-4 mr-2" />
+                    Export Dataset
+                  </UButton>
+                </div>
+              </template>
+            </UCard>
+          </UModal>
           <div v-if="tasks.completed.length === 0" class="text-center py-12">
             <UIcon name="i-heroicons-check-circle" class="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No Completed Tasks</h3>
@@ -217,9 +430,13 @@
               <img v-if="task.dataType.includes('image')" :src="task.dataUrl" class="w-full h-32 object-cover mt-2" />
             </div>
           </div>
+
+
         </div>
       </div>
     </div>
+
+
   </div>
 </template>
 
@@ -261,6 +478,21 @@ const selectedUnassignedTasks = ref<number[]>([])
 const selectedAnnotatingTasks = ref<number[]>([])
 const assignLoading = ref(false)
 const completeLoading = ref(false)
+
+// Export functionality
+const showExportModal = ref(false)
+const selectedExportFormat = ref('yolo')
+const exportLoading = ref(false)
+
+// Dataset split percentages
+const trainPercentage = ref(80)
+const testPercentage = ref(10)
+const validationPercentage = ref(10)
+
+// Computed property for total percentage
+const totalPercentage = computed(() => 
+  trainPercentage.value + testPercentage.value + validationPercentage.value
+)
 
 // Tab configuration
 const tabs = [
@@ -470,6 +702,160 @@ const navigateToAnnotate = (taskId: number) => {
   router.push(`/annotate/${taskId}`)
 }
 
+// Export functionality
+const handleExportDataset = async () => {
+  try {
+    exportLoading.value = true
+    
+    if (!token.value) {
+      throw new Error('Authentication required')
+    }
+    
+    console.log('Exporting dataset for project:', props.projectId)
+    
+    // Use native fetch instead of $fetch for better blob handling
+    const response = await fetch(`http://localhost:8787/api/tasks/export/${props.projectId}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token.value}`,
+        'Content-Type': 'application/json',
+        'export-format': selectedExportFormat.value
+      },
+      body: JSON.stringify({
+        splitConfig: {
+          train: trainPercentage.value,
+          test: testPercentage.value,
+          validation: validationPercentage.value
+        }
+      })
+    })
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Export failed' }))
+      throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`)
+    }
+    
+    // Check if response is a ZIP file
+    const contentType = response.headers.get('content-type')
+    if (contentType && contentType.includes('application/zip')) {
+      // Handle ZIP file download
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `dataset_${props.projectId}_${selectedExportFormat.value}_${new Date().toISOString().split('T')[0]}.zip`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      
+      // Show success toast
+      toast.add({
+        title: 'Dataset Exported',
+        description: `Dataset exported successfully in ${selectedExportFormat.value.toUpperCase()} format with ${trainPercentage.value}/${testPercentage.value}/${validationPercentage.value} split`,
+        color: 'success'
+      })
+    } else {
+      // Handle JSON response (fallback)
+      const data = await response.json()
+      console.log('Export response:', data)
+      
+      const dataStr = JSON.stringify(data, null, 2)
+      const dataBlob = new Blob([dataStr], { type: 'application/json' })
+      const url = URL.createObjectURL(dataBlob)
+      
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `dataset_${props.projectId}_${selectedExportFormat.value}_${new Date().toISOString().split('T')[0]}.json`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      
+      toast.add({
+        title: 'Dataset Exported',
+        description: `Dataset exported successfully as JSON`,
+        color: 'success'
+      })
+    }
+    
+    // Close modal
+    closeExportModal()
+    
+  } catch (err) {
+    console.error('Error exporting dataset:', err)
+    const errorMessage = err instanceof Error ? err.message : 'Failed to export dataset'
+    
+    // Show error toast
+    toast.add({
+      title: 'Export Failed',
+      description: errorMessage,
+      color: 'error'
+    })
+  } finally {
+    exportLoading.value = false
+  }
+}
+
+// Modal management
+const openExportModal = () => {
+  console.log('Opening export modal')
+  showExportModal.value = true
+}
+
+const closeExportModal = () => {
+  console.log('Closing export modal')
+  showExportModal.value = false
+  // Reset form values to defaults when closing
+  selectedExportFormat.value = 'yolo'
+  trainPercentage.value = 80
+  testPercentage.value = 10
+  validationPercentage.value = 10
+}
+
+// Dataset split management
+const updateSplitPercentages = (changedType: 'train' | 'test' | 'validation') => {
+  // Ensure values don't go below 0 or above 100
+  trainPercentage.value = Math.max(0, Math.min(100, trainPercentage.value))
+  testPercentage.value = Math.max(0, Math.min(100, testPercentage.value))
+  validationPercentage.value = Math.max(0, Math.min(100, validationPercentage.value))
+  
+  // Auto-adjust other percentages if total exceeds 100
+  const total = trainPercentage.value + testPercentage.value + validationPercentage.value
+  if (total > 100) {
+    const excess = total - 100
+    if (changedType === 'train') {
+      // Reduce test and validation proportionally
+      const remaining = testPercentage.value + validationPercentage.value
+      if (remaining > 0) {
+        const testRatio = testPercentage.value / remaining
+        const validationRatio = validationPercentage.value / remaining
+        testPercentage.value = Math.max(0, testPercentage.value - (excess * testRatio))
+        validationPercentage.value = Math.max(0, validationPercentage.value - (excess * validationRatio))
+      }
+    } else if (changedType === 'test') {
+      // Reduce train and validation proportionally
+      const remaining = trainPercentage.value + validationPercentage.value
+      if (remaining > 0) {
+        const trainRatio = trainPercentage.value / remaining
+        const validationRatio = validationPercentage.value / remaining
+        trainPercentage.value = Math.max(0, trainPercentage.value - (excess * trainRatio))
+        validationPercentage.value = Math.max(0, validationPercentage.value - (excess * validationRatio))
+      }
+    } else if (changedType === 'validation') {
+      // Reduce train and test proportionally
+      const remaining = trainPercentage.value + testPercentage.value
+      if (remaining > 0) {
+        const trainRatio = trainPercentage.value / remaining
+        const testRatio = testPercentage.value / remaining
+        trainPercentage.value = Math.max(0, trainPercentage.value - (excess * trainRatio))
+        testPercentage.value = Math.max(0, testPercentage.value - (excess * testRatio))
+      }
+    }
+  }
+}
+
 // Lifecycle
 onMounted(() => {
   fetchTasks()
@@ -481,6 +867,8 @@ watch(() => props.projectId, () => {
     // Clear selections when switching projects
     selectedUnassignedTasks.value = []
     selectedAnnotatingTasks.value = []
+    // Close modal when switching projects
+    showExportModal.value = false
     fetchTasks()
   }
 }, { immediate: true })
